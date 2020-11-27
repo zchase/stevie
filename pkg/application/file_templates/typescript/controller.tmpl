@@ -1,0 +1,8 @@
+import { createRouteHandler, RawRouteHandler } from "./controller_builder";
+{{ range $method := .Methods }}
+const {{ $method.FunctionName }}: RawRouteHandler = async (res) => {
+    return res.send({ ok: true, message: "Hello from {{ $method.FunctionName }}" });
+};
+
+export const {{ $method.HandlerName }} = createRouteHandler({{ .FunctionName }});
+{{ end }}
