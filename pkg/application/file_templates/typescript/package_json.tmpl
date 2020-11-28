@@ -4,9 +4,10 @@
   "description": "{{ .Description }}",
   "main": "index.ts",
   "scripts": {
-    "build":    "tsc",
-    "test":     "NODE_ENV=testing ./node_modules/.bin/nyc mocha --timeout 10000 --colors --require ts-node/register --reporter spec test/**/*.ts",
-    "autotest": "NODE_ENV=testing mocha --timeout 10000 --colors --require ts-node/register --reporter spec --watch --watch-files 'src/**/*.ts, test/**/*.ts' test/**/*.ts"
+    "build":     "tsc",
+    "run-local": "ts-node ./tmp-local/index.ts",
+    "test":      "NODE_ENV=testing ./node_modules/.bin/nyc mocha --timeout 10000 --colors --require ts-node/register --reporter spec test/**/*.ts",
+    "autotest":  "NODE_ENV=testing mocha --timeout 10000 --colors --require ts-node/register --reporter spec --watch --watch-files 'src/**/*.ts, test/**/*.ts' test/**/*.ts"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.64",
@@ -18,6 +19,7 @@
     "@types/node": "^10.0.0",
     "chai": "^4.2.0",
     "mocha": "^8.0.1",
+    "ts-node": "^9.0.0",
     "typescript": "^4.1.2"
   },
   "dependencies": {

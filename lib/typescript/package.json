@@ -4,6 +4,7 @@
   "description": "A collection of helpers for Stevie applications",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc --build tsconfig.json",
     "postinstall": "tsc --build tsconfig.json"
