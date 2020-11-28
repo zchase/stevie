@@ -11,8 +11,9 @@ var (
 	// Config
 	ApplicationConfigPath = "config"
 
-	// File template path
+	// File template paths
 	FileTemplatePath = "/pkg/application/file_templates"
+	LocalPackagePath = "/lib"
 
 	// TypeScript
 	TypeScriptFileTemplatesDirectoryName = "typescript"
@@ -20,12 +21,11 @@ var (
 	TypeScriptTSConfigTemplateName       = "tsconfig_json.tmpl"
 	TypeScriptPackageJSONFileName        = "package.json"
 	TypeScriptPackageJSONTemplateName    = "package_json.tmpl"
-	TypeScriptControllerBuilderFileName  = "controller_builder"
-	TypeScriptServerArgsFileName         = "server_args"
 	TypeScriptTestDirectoryName          = "test"
 	TypeScriptAppDirectoryName           = "app"
 	TypeScriptModelsDirectoryName        = "models"
 	TypeScriptControllersDirectoryName   = "controllers"
+	TypesScriptUtilsDirectory            = "stevie-utils"
 )
 
 // WriteOutTemplateFile writes out a template file.
@@ -87,26 +87,22 @@ func CreateTypeScriptProject(name, description string) error {
 		return err
 	}
 
-	// Create the controller builder file in the controller directory.
-	controllerBuilderOutputFileName := fmt.Sprintf("%s.ts", TypeScriptControllerBuilderFileName)
-	controllerBuilderTemplateName := fmt.Sprintf("%s.tmpl", TypeScriptControllerBuilderFileName)
-	err = writeOutTemplateFile(controllersDirectoryPath, controllerBuilderTemplateName, controllerBuilderOutputFileName, nil)
+	// Copy in the utils package.
+	utilsPackagePath := path.Join(LocalPackagePath, TypeScriptFileTemplatesDirectoryName)
+	err = utils.CreateNewDirectory(TypesScriptUtilsDirectory)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error creating utils directory: %v", err)
 	}
 
-	// Create the server args file in the controller directory.
-	serverArgsOutputFileName := fmt.Sprintf("%s.ts", TypeScriptServerArgsFileName)
-	serverArgsTemplateName := fmt.Sprintf("%s.tmpl", TypeScriptServerArgsFileName)
-	err = writeOutTemplateFile(controllersDirectoryPath, serverArgsTemplateName, serverArgsOutputFileName, nil)
+	err = utils.CopyPackagedDirectory(utilsPackagePath, TypesScriptUtilsDirectory, []string{"node_modules"})
 	if err != nil {
-		return err
+		return fmt.Errorf("Error copy in TypeScript utilities: %v", err)
 	}
 
 	// Install the application dependencies.
 	err = utils.RunCommandWithOutput("yarn", []string{})
 	if err != nil {
-		utils.HandleError("Erroring install app dependencies: ", err)
+		return fmt.Errorf("Error install app dependencies: %v", err)
 	}
 
 	return nil

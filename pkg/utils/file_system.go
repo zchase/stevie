@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+
+	"github.com/markbates/pkger"
 )
 
 // addFilesToZip adds files in a directory to a zip file.
@@ -184,8 +186,146 @@ func WriteNewFile(pathName string, fileName string, content string) error {
 	return nil
 }
 
+// CopyPackagedDirectory copies a directory packaged in the binary and its contents to a new location.
+func CopyPackagedDirectory(oldDirPath, newDirPath string, exclustionList []string) error {
+	// Read the directory.
+	dir, err := pkger.Open(oldDirPath)
+	if err != nil {
+		return fmt.Errorf("Error reading directory: %v", err)
+	}
+
+	files, err := dir.Readdir(0)
+	if err != nil {
+		return fmt.Errorf("Error reading directory contents: %v", err)
+	}
+
+	// Loop over the files and copy them to their new location.
+	for _, file := range files {
+		// If the file name is in the exlusion list we will skip it.
+		fileName := file.Name()
+		excludeFile := false
+		for _, exlusionName := range exclustionList {
+			if fileName == exlusionName {
+				excludeFile = true
+			}
+		}
+		if excludeFile {
+			continue
+		}
+
+		// If the file is directory we need to read and copy
+		// the contents.
+		if file.IsDir() {
+			// Create the new directory.
+			oldBase := path.Join(oldDirPath, fileName)
+			newDirPath := path.Join(newDirPath, fileName)
+			err = CreateNewDirectory(newDirPath)
+			if err != nil {
+				return fmt.Errorf("Error creating new directory: %v", err)
+			}
+
+			err = CopyPackagedDirectory(oldBase, newDirPath, exclustionList)
+			if err != nil {
+				return fmt.Errorf("Error copy sub directory: %v", err)
+			}
+		} else {
+			oldFilePath := path.Join(oldDirPath, fileName)
+			newFilePath := path.Join(newDirPath, fileName)
+
+			// Read the old file.
+			oldFile, err := pkger.Open(oldFilePath)
+			if err != nil {
+				return fmt.Errorf("Error reading file to copy: %v", err)
+			}
+
+			contents, err := ioutil.ReadAll(oldFile)
+			if err != nil {
+				return fmt.Errorf("Error reading packaged file: %v", err)
+			}
+
+			// Create the new file.
+			newFile, err := os.Create(newFilePath)
+			if err != nil {
+				return fmt.Errorf("Error creating new file for copying: %v", err)
+			}
+
+			// Write the file contents to the new file.
+			_, err = newFile.Write(contents)
+			if err != nil {
+				return fmt.Errorf("Error writing contents to new file: %v", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// CopyDirectory copies a directory and its contents to a new location.
+func CopyDirectory(oldDirPath, newDirPath string, exclustionList []string) error {
+	// Read the directory.
+	files, err := ioutil.ReadDir(oldDirPath)
+	if err != nil {
+		return fmt.Errorf("Error reading directory: %v", err)
+	}
+
+	// Loop over the files and copy them to their new location.
+	for _, file := range files {
+		// If the file name is in the exlusion list we will skip it.
+		fileName := file.Name()
+		excludeFile := false
+		for _, exlusionName := range exclustionList {
+			if fileName == exlusionName {
+				excludeFile = true
+			}
+		}
+		if excludeFile {
+			continue
+		}
+
+		// If the file is directory we need to read and copy
+		// the contents.
+		if file.IsDir() {
+			// Create the new directory.
+			oldBase := path.Join(oldDirPath, fileName)
+			newDirPath := path.Join(newDirPath, fileName)
+			err = CreateNewDirectory(newDirPath)
+			if err != nil {
+				return fmt.Errorf("Error creating new directory: %v", err)
+			}
+
+			err = CopyDirectory(oldBase, newDirPath, exclustionList)
+			if err != nil {
+				return fmt.Errorf("Error copy sub directory: %v", err)
+			}
+		} else {
+			oldFilePath := path.Join(oldDirPath, fileName)
+			newFilePath := path.Join(newDirPath, fileName)
+
+			// Read the old file.
+			contents, err := ioutil.ReadFile(oldFilePath)
+			if err != nil {
+				return fmt.Errorf("Error reading file to copy: %v", err)
+			}
+
+			// Create the new file.
+			newFile, err := os.Create(newFilePath)
+			if err != nil {
+				return fmt.Errorf("Error creating new file for copying: %v", err)
+			}
+
+			// Write the file contents to the new file.
+			_, err = newFile.Write(contents)
+			if err != nil {
+				return fmt.Errorf("Error writing contents to new file: %v", err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // CopyFile copies a file to a different file.
-func CopyFile(oldFilePath string, newFilePath string) error {
+func CopyFile(oldFilePath, newFilePath string) error {
 	// Open the old file.
 	source, err := os.Open(oldFilePath)
 	if err != nil {

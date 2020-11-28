@@ -75,7 +75,6 @@ func createNewProject(cmd *cobra.Command, args []string) {
 	setupSpinner.Create()
 
 	// Create the Pulumi Project.
-	fmt.Println("Creating Pulumi project and stacks...")
 	for _, env := range DefaultEnvironments {
 		err = auto_pulumi.CreatePulumiProject(ctx, username, appConfig.DashCaseName, env, appConfig.Description)
 		if err != nil {
@@ -104,6 +103,7 @@ func createNewProject(cmd *cobra.Command, args []string) {
 	}
 
 	createProjectSpinner.Stop()
+	utils.ClearLine()
 	fmt.Println("Project has been successfully created!")
 }
 

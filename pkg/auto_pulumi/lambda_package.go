@@ -40,15 +40,17 @@ func PackageTypeScriptLambda(tmpDirectoryName string, name string) (string, erro
 		return "", err
 	}
 
-	// Add the helper files.
-	helperFiles := [2]string{"controller_builder.js", "server_args.js"}
-	for _, file := range helperFiles {
-		source := fmt.Sprintf("bin/controllers/%s", file)
-		destination := path.Join(lambdaDirectoryPath, file)
-		err = utils.CopyFile(source, destination)
-		if err != nil {
-			return "", err
-		}
+	// Add the utils package.
+	utilsName := "stevie-utils"
+	utilsPath := path.Join(lambdaDirectoryPath, utilsName)
+	err = utils.CreateNewDirectory(utilsPath)
+	if err != nil {
+		return "", fmt.Errorf("Error creating utils directory for Lambda: %v", err)
+	}
+
+	err = utils.CopyDirectory(utilsName, utilsPath, []string{"node_modules"})
+	if err != nil {
+		return "", fmt.Errorf("Error copy in TypeScript utilities: %v", err)
 	}
 
 	// Add the package.json for the project and install the dependencies.

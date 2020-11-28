@@ -7,5 +7,6 @@ import (
 
 func main() {
 	pkger.Include("/pkg/application/file_templates")
+	pkger.Include("/lib")
 	cmd.Execute()
 }

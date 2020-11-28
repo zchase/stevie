@@ -185,6 +185,8 @@ func (a *PulumiAction) Update(ctx context.Context) error {
 	// Stop the spinner and clean the temp directory.
 	actionSpinner.Stop()
 	a.TemporaryDirectory.Clean()
+	utils.ClearLine()
+	utils.Print("")
 
 	// Print out the outputs
 	utils.Print(utils.TextColor("Outputs", color.FgGreen))
@@ -192,6 +194,7 @@ func (a *PulumiAction) Update(ctx context.Context) error {
 		utils.Printf("    - %s: %v\n", key, value.Value)
 	}
 
+	utils.Print("")
 	return nil
 }
 

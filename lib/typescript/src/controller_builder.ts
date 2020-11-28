@@ -60,9 +60,6 @@ export function parseFunctionArguments(func: Function): string[] {
   return argNames;
 };
 
-// RouteMethods are the different request methods supported by the route creator.
-type RouteMethods = "GET" | "POST" | "PUT" | "DELETE";
-
 // RawRouteHandler is the handler written by the person creating the endpoint.
 export interface RawRouteHandler {
     (res: ResponseHandler, ...args: ServerArgObject[]): Promise<APIGatewayProxyResult>;
@@ -71,14 +68,6 @@ export interface RawRouteHandler {
 // RouteHandler is the handler for an API Gateway Event.
 interface RouteHandler {
     (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult>;
-}
-
-// Route contains the values for creating an API Gateway Route.
-interface Route {
-    path: string;
-    method: RouteMethods;
-    eventHandler: RouteHandler;
-    apiKeyRequired: boolean;
 }
 
 // ResponseHandler contains the methods for handling an API Gateway response.
@@ -97,12 +86,12 @@ function createRequestResponse(statusCode: number, body: string): APIGatewayProx
 
 // createResponseObject is a helper function for creating a valid API Gateway result from a value
 // that needs to be stringified.
-function createResponseObject(code: number, data: any): APIGatewayProxyResult {
+export function createResponseObject(code: number, data: any): APIGatewayProxyResult {
     return createRequestResponse(code, JSON.stringify(data));
 }
 
 // wrapRouteHandlerArgs is a function for wrapping the args of RouteHandler as a ServerArg.
-function wrapRouteHandlerArgs(args: string[], body: any): ServerArgObject[] {
+export function wrapRouteHandlerArgs(args: string[], body: any): ServerArgObject[] {
     const result: ServerArgObject[] = [];
 
     for (let i = 0; i < args.length; i++) {
@@ -112,6 +101,11 @@ function wrapRouteHandlerArgs(args: string[], body: any): ServerArgObject[] {
     }
 
     return result;
+}
+
+export const responseHandler: ResponseHandler = {
+    send: (data: any) => createResponseObject(200, data),
+    sendWithStatusCode: (code: number, data: any) => createResponseObject(code, data),
 }
 
 // wrapRouteHandler is a function for wrapping a route handler with common checks
@@ -124,12 +118,6 @@ export function createRouteHandler(handler: RawRouteHandler): RouteHandler {
             body = event?.body ? JSON.parse(Buffer.from(event.body, "base64").toString()) : {};
         } else if (typeof event?.body === "string") {
             body = JSON.parse(event.body);
-        }
-
-        // Create the request response handlers.
-        const responseHandler: ResponseHandler = {
-            send: (data: any) => createResponseObject(200, data),
-            sendWithStatusCode: (code: number, data: any) => createResponseObject(code, data),
         }
 
         // Parse the args of the function. The first arg in each handler
