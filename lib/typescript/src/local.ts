@@ -10,7 +10,7 @@ import {
 function createRouteHandler(handler: RawRouteHandler) {
     return async (req: Request, res: Response) => {
         // Grab the request body.
-        const body = req.body;
+        const body = Object.assign({}, req.body, req.query);
 
         // Parse the args of the function. The first arg in each handler
         // should be the for the `response` object for handling the response.
@@ -26,7 +26,7 @@ function createRouteHandler(handler: RawRouteHandler) {
             responseData = await handler(responseHandler, ...params);
         } catch (e) {
             console.log(e);
-            responseData = responseHandler.sendWithStatusCode(500, e);
+            responseData = responseHandler.sendWithStatusCode(500, { ok: false, message: e.message });
         }
 
         // Return the response data.

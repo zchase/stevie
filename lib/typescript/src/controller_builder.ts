@@ -120,20 +120,23 @@ export function createRouteHandler(handler: RawRouteHandler): RouteHandler {
             body = JSON.parse(event.body);
         }
 
+        // Add the query params to the body.
+        const bodyWithQuery = Object.assign({}, body, event.queryStringParameters);
+
         // Parse the args of the function. The first arg in each handler
         // should be the for the `response` object for handling the response.
         const handlerArgs = parseFunctionArguments(handler);
         const wrappableHandlerArgs = handlerArgs.slice(1, handlerArgs.length);
 
         // Wrap the args for validation within the handler.
-        const params = wrapRouteHandlerArgs(wrappableHandlerArgs, body);
+        const params = wrapRouteHandlerArgs(wrappableHandlerArgs, bodyWithQuery);
 
         // Try the handler and return a 500 error for any errors.
         try {
             return await handler(responseHandler, ...params);
         } catch (e) {
             console.log(e);
-            return createResponseObject(500, e);
+            return createResponseObject(500, { ok: false, message: e.message });
         }
     };
 }

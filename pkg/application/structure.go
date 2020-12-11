@@ -73,13 +73,6 @@ func CreateTypeScriptProject(name, description string) error {
 		return err
 	}
 
-	// Create the models directory in the app directory.
-	modelsDirectoryPath := path.Join(TypeScriptAppDirectoryName, TypeScriptModelsDirectoryName)
-	err = utils.CreateNewDirectory(modelsDirectoryPath)
-	if err != nil {
-		return err
-	}
-
 	// Create the controllers directory in the app directory.
 	controllersDirectoryPath := path.Join(TypeScriptAppDirectoryName, TypeScriptControllersDirectoryName)
 	err = utils.CreateNewDirectory(controllersDirectoryPath)
