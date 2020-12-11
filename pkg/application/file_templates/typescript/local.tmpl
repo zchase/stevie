@@ -1,0 +1,18 @@
+import { local } from "stevie-utils";
+{{ range .Imports }}
+import * as {{ .Name }} from "../{{ .File }}";
+{{ end }}
+const routes: local.LocalServerRoute[] = [
+{{ range .Routes }}
+    {
+        path: "{{ .Path }}",
+        method: "{{ .Method }}",
+        handler: {{ .ImportName }}.{{ .FunctionName }},
+    },
+{{ end }}
+];
+
+const server = local.createLocalServer(routes);
+server.listen({{ .Port }}, () => {
+    console.log("Server is listening at http://localhost:{{ .Port }}");
+});
