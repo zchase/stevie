@@ -24,7 +24,7 @@ func CreateAPIDeployment(environment string) (auto.Stack, error) {
 		return auto.Stack{}, err
 	}
 
-	// Create the delpoy function.
+	// Create the deploy function.
 	deployFunc := func(ctx *pulumi.Context) error {
 		return application.BuildAPIRoutes(ctx, appConfig.DashCaseName, environment, appConfig.Routes)
 	}

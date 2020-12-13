@@ -10,6 +10,7 @@ import (
 type APIRoute struct {
 	Name        string
 	Route       string
+	CorsEnabled bool
 	HandlerFile string
 	Methods     []string
 }

@@ -19,6 +19,7 @@ var validControllerMethods = map[string]bool{
 // Flags
 var name string
 var methods []string
+var corsEnabled bool
 
 var addControllerCmd = &cobra.Command{
 	Use:   "add-controller",
@@ -64,7 +65,7 @@ func addNewFile(cmd *cobra.Command, args []string) {
 		method := strings.ToUpper(inputMethod)
 		if !validControllerMethods[method] {
 			configSpinner.Fail()
-			errMsg := fmt.Sprintf("Unkown method provided: %s", inputMethod)
+			errMsg := fmt.Sprintf("Unknown method provided: %s", inputMethod)
 			utils.HandleError(errMsg, nil)
 		}
 
@@ -88,7 +89,10 @@ func addNewFile(cmd *cobra.Command, args []string) {
 			utils.HandleError("Error creating TypeScript controller: ", err)
 		}
 
-		err = AddAPIRouteToConfig(application.ApplicationConfigPath, name, fmt.Sprintf("/%s", name), controllerFile, controllerMethods)
+		err = AddAPIRouteToConfig(
+			application.ApplicationConfigPath, name, fmt.Sprintf("/%s", name), controllerFile, controllerMethods,
+			corsEnabled,
+		)
 		if err != nil {
 			utils.HandleError("Error adding route to config: ", err)
 		}
@@ -107,4 +111,5 @@ func init() {
 
 	addControllerCmd.Flags().StringVar(&name, "name", "", "The name for the controller in camelCase.")
 	addControllerCmd.Flags().StringSliceVar(&methods, "methods", []string{"GET"}, "The methods for your route. GET, POST, PUT, & DELETE.")
+	addControllerCmd.Flags().BoolVar(&corsEnabled, "cors", false, "Enable CORS on your path.")
 }

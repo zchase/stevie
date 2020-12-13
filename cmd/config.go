@@ -22,7 +22,7 @@ type ApplicationConfig struct {
 	Routes          []auto_pulumi.APIRoute
 }
 
-// Represents the values for an enviornment config file.
+// Represents the values for an environment config file.
 type EnvironmentConfigFile struct {
 	Name        string
 	Environment string
@@ -73,7 +73,7 @@ func (c *ApplicationConfig) WriteOutBaseConfigFile(configPath string) error {
 }
 
 // AddAPIRouteToConfig adds an API Route to the base config.
-func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, methods []string) error {
+func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, methods []string, corsEnabled bool) error {
 	// Read in the base config file.
 	baseConfig, err := ReadBaseConfig(configPath)
 	if err != nil {
@@ -81,13 +81,13 @@ func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, method
 	}
 
 	// If the routes doesn't exist let's add this new route as the first object
-	// otherwise we appened the new route.
+	// otherwise we append the new route.
 	if baseConfig.Routes != nil {
 		baseConfig.Routes = []auto_pulumi.APIRoute{
-			application.CreateAPIRoute(name, route, handlerFilePath, methods),
+			application.CreateAPIRoute(name, route, handlerFilePath, methods, corsEnabled),
 		}
 	} else {
-		baseConfig.Routes = append(baseConfig.Routes, application.CreateAPIRoute(name, route, handlerFilePath, methods))
+		baseConfig.Routes = append(baseConfig.Routes, application.CreateAPIRoute(name, route, handlerFilePath, methods, corsEnabled))
 	}
 
 	// Write out the new config file.

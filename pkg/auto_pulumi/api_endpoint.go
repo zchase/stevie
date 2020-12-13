@@ -98,6 +98,75 @@ func createAPIGatewayIntegration(
 	return lambdaPermissions, nil
 }
 
+func enableCORSOnResource(ctx *pulumi.Context, apiResource *apigateway.Resource, gateway *apigateway.RestApi, route APIRoute) error {
+	apiGatewayId := gateway.ID()
+	apiGatewayResourceId := apiResource.ID()
+
+	// Create the CORS Method.
+	methodName := fmt.Sprintf("%s-api-options-cors-method", route.Name)
+	corsMethod, err := apigateway.NewMethod(ctx, methodName, &apigateway.MethodArgs{
+		Authorization: pulumi.String("NONE"),
+		HttpMethod:    pulumi.String("OPTIONS"),
+		ResourceId:    apiGatewayResourceId,
+		RestApi:       apiGatewayId,
+	})
+	if err != nil {
+		return fmt.Errorf("Error creating CORS API Gateway Method: %v", err)
+	}
+
+	// Create the integration.
+	integrationName := fmt.Sprintf("%s-options-cors-lambda-integration", route.Name)
+	integration, err := apigateway.NewIntegration(ctx, integrationName, &apigateway.IntegrationArgs{
+		HttpMethod: corsMethod.HttpMethod,
+		ResourceId: apiGatewayResourceId,
+		RestApi:    apiGatewayId,
+		Type:       pulumi.String("MOCK"),
+		RequestTemplates: pulumi.StringMap{
+			"application/json": pulumi.String("{ statusCode: 200 }"),
+		},
+	}, pulumi.DependsOn([]pulumi.Resource{corsMethod}))
+	if err != nil {
+		return fmt.Errorf("Error creating API Integrations for CORS method: %v", err)
+	}
+
+	// Create the method response.
+	responseName := fmt.Sprintf("%s-options-cors-api-response", route.Name)
+	response200, err := apigateway.NewMethodResponse(ctx, responseName, &apigateway.MethodResponseArgs{
+		HttpMethod: corsMethod.HttpMethod,
+		ResourceId: apiGatewayResourceId,
+		RestApi:    apiGatewayId,
+		StatusCode: pulumi.String("200"),
+		ResponseParameters: pulumi.BoolMap{
+			"method.response.header.Access-Control-Allow-Origin":  pulumi.Bool(true),
+			"method.response.header.Access-Control-Allow-Methods": pulumi.Bool(true),
+			"method.response.header.Access-Control-Allow-Headers": pulumi.Bool(true),
+		},
+	}, pulumi.DependsOn([]pulumi.Resource{integration}))
+	if err != nil {
+		return fmt.Errorf("Error creating response for CORS method: %v", err)
+	}
+
+	// Create the integration response.
+	integrationResponseName := fmt.Sprintf("%s-options-cors-integration-response", route.Name)
+	_, err = apigateway.NewIntegrationResponse(ctx, integrationResponseName, &apigateway.IntegrationResponseArgs{
+		HttpMethod:        corsMethod.HttpMethod,
+		ResourceId:        apiGatewayResourceId,
+		RestApi:           apiGatewayId,
+		StatusCode:        response200.StatusCode,
+		ResponseTemplates: pulumi.StringMap{"application/json": pulumi.String("{}")},
+		ResponseParameters: pulumi.StringMap{
+			"method.response.header.Access-Control-Allow-Origin":  pulumi.String("'*'"),
+			"method.response.header.Access-Control-Allow-Methods": pulumi.String("'*'"),
+			"method.response.header.Access-Control-Allow-Headers": pulumi.String("'*'"),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Error creating the CORS Integration Response: %v", err)
+	}
+
+	return nil
+}
+
 func createApiGatewayDeployment(
 	ctx *pulumi.Context, functions []APIEndpointFunction, apiResource *apigateway.Resource, gateway *apigateway.RestApi,
 	permissions []*lambda.Permission, name string, environment string,
@@ -105,7 +174,7 @@ func createApiGatewayDeployment(
 	apiDeploymentName := fmt.Sprintf("%s-api-deployment", name)
 	stage := pulumi.String(environment)
 
-	// Create the deponds on array
+	// Create the depends-on array
 	dependsOn := []pulumi.Resource{gateway, apiResource}
 	for _, function := range functions {
 		dependsOn = append(dependsOn, function.Function)
@@ -188,6 +257,8 @@ func CreateAPIEndpoint(
 	if err != nil {
 		return pulumi.StringOutput{}, err
 	}
+
+	// If CORS is enabled let's create those resources.
 
 	// Create a new deployment
 	err = createApiGatewayDeployment(
