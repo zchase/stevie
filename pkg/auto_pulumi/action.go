@@ -2,7 +2,6 @@ package auto_pulumi
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 
 // outputActionSteps prints out the steps of an action to the terminal.
 func outputActionSteps(steps []auto.PreviewStep) {
-	utils.Print(utils.TextColor("\nPreview Resuls:\n", color.FgGreen))
+	utils.Print(utils.TextColor("\nPreview Results:\n", color.FgGreen))
 
 	// Create the output table.
 	table := utils.CreateTerminalTable()
@@ -59,15 +58,20 @@ type PulumiAction struct {
 	TemporaryDirectory *utils.TemporaryDirectory
 }
 
+// Fail handles the failure operations like cleaning the tmp dir.
+func (a *PulumiAction) Fail(err error, message string) error {
+	a.TemporaryDirectory.Clean()
+	return utils.NewErrorMessage(message, err)
+}
+
 // SetUp sets up the action to run.
 func (a *PulumiAction) SetUp(ctx context.Context, configPath string) error {
 	// Create a spinner to show the user what is happening.
-	checkEnvSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Checking environment",
-		CompletedText: "✅ Environment check complete.",
-		FailureText:   "❌ Environment check failed.",
-	}
-	checkEnvSpinner.Create()
+	checkEnvSpinner := utils.CreateNewTerminalSpinner(
+		"Checking environment",
+		"Environment check complete.",
+		"Environment check failed.",
+	)
 
 	// Read config in.
 	projectConfig, err := utils.ReadConfigFile(configPath, a.Environment)
@@ -77,30 +81,25 @@ func (a *PulumiAction) SetUp(ctx context.Context, configPath string) error {
 	}
 
 	// Create a tmp directory for compiliing the TypeScript lambdas.
-	tmp := &utils.TemporaryDirectory{
-		Name: tmpDirName,
-	}
+	tmp := &utils.TemporaryDirectory{Name: tmpDirName}
 	err = tmp.Create()
 	if err != nil {
-		checkEnvSpinner.Fail()
-		return fmt.Errorf("Error creating tmp directory: %v", err)
+		return checkEnvSpinner.FailWithMessage("Error creating tmp directory", err)
 	}
 	a.TemporaryDirectory = tmp
 
 	// Stop the environment spinner and start the API deployment function
 	// spinner.
 	checkEnvSpinner.Stop()
-	createAPISpinner := utils.TerminalSpinner{
-		SpinnerText:   "Generating Pulumi Program",
-		CompletedText: "✅ Pulumi Program generated.",
-		FailureText:   "❌ Pulumi Program failed to generate.",
-	}
-	createAPISpinner.Create()
+	createAPISpinner := utils.CreateNewTerminalSpinner(
+		"Generating Pulumi Program",
+		"Pulumi Program generated.",
+		"Pulumi Program failed to generate.",
+	)
 
 	stack, err := a.CreateDeployment(projectConfig.Environment)
 	if err != nil {
-		createAPISpinner.Fail()
-		return fmt.Errorf("Error creating API Deployment: %v", err)
+		return createAPISpinner.FailWithMessage("Error creating API Deployment", err)
 	}
 
 	// Set the stack.
@@ -109,20 +108,18 @@ func (a *PulumiAction) SetUp(ctx context.Context, configPath string) error {
 	// Stop the API Deployment spinner and start a spinner for setting
 	// up the preview.
 	createAPISpinner.Stop()
-	settingUpPreviewSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Setting up program execution environment.",
-		CompletedText: "✅ Program execution environment set up successfully.",
-		FailureText:   "❌ Failed to set up program execution environment.",
-	}
-	settingUpPreviewSpinner.Create()
+	settingUpPreviewSpinner := utils.CreateNewTerminalSpinner(
+		"Setting up program execution environment",
+		"Program execution environment set up successfully.",
+		"Failed to set up program execution environment.",
+	)
 
 	// Install plugins and set the config values.
 	workspace := stack.Workspace()
 
 	err = workspace.InstallPlugin(ctx, "aws", "v3.2.1")
 	if err != nil {
-		settingUpPreviewSpinner.Fail()
-		return fmt.Errorf("Failed to install program plugins: %v", err)
+		return settingUpPreviewSpinner.FailWithMessage("Failed to install program plugins", err)
 	}
 
 	// Set stack configuration specifying the AWS region to deploy
@@ -130,26 +127,23 @@ func (a *PulumiAction) SetUp(ctx context.Context, configPath string) error {
 
 	// Stop the setting up spinner and create a spinner for the preview.
 	settingUpPreviewSpinner.Stop()
-
 	return nil
 }
 
 // Preview runs a preview of the infrastructure changes.
 func (a *PulumiAction) Preview(ctx context.Context) error {
 	// Create a spinner.
-	actionSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Running infrastructure preview",
-		CompletedText: "✅ Preview completed successfully.",
-		FailureText:   "❌ Preview failed.",
-	}
-	actionSpinner.Create()
+	actionSpinner := utils.CreateNewTerminalSpinner(
+		"Running infrastructure preview",
+		"Preview completed successfully.",
+		"Preview failed.",
+	)
 
 	// Run the action.
 	result, err := a.Stack.Preview(ctx)
 	if err != nil {
 		actionSpinner.Fail()
-		a.TemporaryDirectory.Clean()
-		return fmt.Errorf("Error running stack preview: %v", err)
+		return a.Fail(err, "Error running stack preview")
 	}
 
 	// Stop the spinner, clean the temp directory, and output the results.
@@ -162,12 +156,11 @@ func (a *PulumiAction) Preview(ctx context.Context) error {
 // Update runs an update of the infrastructure.
 func (a *PulumiAction) Update(ctx context.Context) error {
 	// Create a spinner.
-	actionSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Running infrastructure update",
-		CompletedText: "✅ Update completed successfully.",
-		FailureText:   "❌ Update failed.",
-	}
-	actionSpinner.Create()
+	actionSpinner := utils.CreateNewTerminalSpinner(
+		"Running infrastructure update",
+		"Update completed successfully.",
+		"Update failed.",
+	)
 	actionSpinner.SetOutput(os.Stdout)
 	outputLogger := utils.TerminalSpinnerLogger{}
 
@@ -178,8 +171,7 @@ func (a *PulumiAction) Update(ctx context.Context) error {
 	result, err := a.Stack.Up(ctx, outputStreamer)
 	if err != nil {
 		actionSpinner.Fail()
-		a.TemporaryDirectory.Clean()
-		return fmt.Errorf("Error running stack update: %v", err)
+		return a.Fail(err, "Error running stack update")
 	}
 
 	// Stop the spinner and clean the temp directory.
@@ -201,12 +193,11 @@ func (a *PulumiAction) Update(ctx context.Context) error {
 // Destroy runs a destroy of the infrastructure.
 func (a *PulumiAction) Destroy(ctx context.Context) error {
 	// Create a spinner.
-	actionSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Running infrastructure destroy",
-		CompletedText: "✅ Destroy completed successfully.",
-		FailureText:   "❌ Destroy failed.",
-	}
-	actionSpinner.Create()
+	actionSpinner := utils.CreateNewTerminalSpinner(
+		"Running infrastructure destroy",
+		"Destroy completed successfully.",
+		"Destroy failed.",
+	)
 	outputLogger := utils.TerminalSpinnerLogger{}
 
 	// Stream the results to the terminal.
@@ -216,8 +207,7 @@ func (a *PulumiAction) Destroy(ctx context.Context) error {
 	_, err := a.Stack.Destroy(ctx, outputStreamer)
 	if err != nil {
 		actionSpinner.Fail()
-		a.TemporaryDirectory.Clean()
-		return fmt.Errorf("Error running stack destroy: %v", err)
+		return a.Fail(err, "Error running stack destroy")
 	}
 
 	// Stop the spinner and clean the temp directory.

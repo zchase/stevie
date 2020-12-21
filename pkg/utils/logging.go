@@ -72,6 +72,22 @@ func (t *TerminalSpinner) Fail() {
 	Print(t.FailureText)
 }
 
+func (t *TerminalSpinner) FailWithMessage(message string, err error) error {
+	t.Fail()
+	return NewErrorMessage(message, err)
+}
+
+// CreateNewTerminalSpinner creates a new terminal spinner.
+func CreateNewTerminalSpinner(spinnerText, completedText, failureText string) TerminalSpinner {
+	spinner := TerminalSpinner{
+		SpinnerText:   spinnerText,
+		CompletedText: fmt.Sprintf("✅ %s", completedText),
+		FailureText:   fmt.Sprintf("❌ %s", failureText),
+	}
+	spinner.Create()
+	return spinner
+}
+
 func TextColor(text string, textColor ...color.Attribute) string {
 	c := color.New(textColor...).SprintFunc()
 	return c(text)

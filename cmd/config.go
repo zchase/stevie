@@ -15,14 +15,13 @@ var baseConfigName = "base"
 
 // Represents the values for the base config file.
 type ApplicationConfig struct {
-	Name            string
-	DashCaseName    string
-	Description     string
-	BackendLanguage string
-	Routes          []auto_pulumi.APIRoute
+	Name         string
+	DashCaseName string
+	Description  string
+	Routes       []auto_pulumi.APIRoute
 }
 
-// Represents the values for an enviornment config file.
+// Represents the values for an environment config file.
 type EnvironmentConfigFile struct {
 	Name        string
 	Environment string
@@ -45,12 +44,7 @@ func (c *ApplicationConfig) WriteOutBaseEnvironmentConfigFile(configPath, env st
 
 	// Create the config file.
 	envFileName := fmt.Sprintf("%s.yaml", env)
-	err = utils.WriteNewFile(configPath, envFileName, string(contents))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return utils.WriteNewFile(configPath, envFileName, string(contents))
 }
 
 // WriteOutBaseConfigFile writes out the base config file.
@@ -64,16 +58,11 @@ func (c *ApplicationConfig) WriteOutBaseConfigFile(configPath string) error {
 	}
 
 	// Write out the base config file.
-	err = utils.WriteNewFile(configPath, baseConfigFileName, string(contents))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return utils.WriteNewFile(configPath, baseConfigFileName, string(contents))
 }
 
 // AddAPIRouteToConfig adds an API Route to the base config.
-func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, methods []string) error {
+func AddAPIRouteToConfig(configPath, name, route, pathToHandlerFiles string, corsEnabled bool) error {
 	// Read in the base config file.
 	baseConfig, err := ReadBaseConfig(configPath)
 	if err != nil {
@@ -81,22 +70,17 @@ func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, method
 	}
 
 	// If the routes doesn't exist let's add this new route as the first object
-	// otherwise we appened the new route.
-	if baseConfig.Routes != nil {
+	// otherwise we append the new route.
+	if baseConfig.Routes == nil {
 		baseConfig.Routes = []auto_pulumi.APIRoute{
-			application.CreateAPIRoute(name, route, handlerFilePath, methods),
+			application.CreateAPIRoute(name, route, pathToHandlerFiles, corsEnabled),
 		}
 	} else {
-		baseConfig.Routes = append(baseConfig.Routes, application.CreateAPIRoute(name, route, handlerFilePath, methods))
+		baseConfig.Routes = append(baseConfig.Routes, application.CreateAPIRoute(name, route, pathToHandlerFiles, corsEnabled))
 	}
 
 	// Write out the new config file.
-	err = baseConfig.WriteOutBaseConfigFile(configPath)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return baseConfig.WriteOutBaseConfigFile(configPath)
 }
 
 // ReadBaseConfig reads out the base config.
@@ -111,15 +95,11 @@ func ReadBaseConfig(configPath string) (ApplicationConfig, error) {
 	// Unmarshal the config file.
 	var appConfig ApplicationConfig
 	err = yaml.Unmarshal(configBytes, &appConfig)
-	if err != nil {
-		return ApplicationConfig{}, err
-	}
-
-	return appConfig, nil
+	return appConfig, err
 }
 
 // CreateApplicationConfig creates the application config.
-func CreateApplicationConfig(configPath, name, description, backendLanguage string, environments []string) (ApplicationConfig, error) {
+func CreateApplicationConfig(configPath, name, description string, environments []string) (ApplicationConfig, error) {
 	var err error
 
 	// If either the name or description is empty prompt the user
@@ -140,10 +120,9 @@ func CreateApplicationConfig(configPath, name, description, backendLanguage stri
 
 	// Create the config struct.
 	config := ApplicationConfig{
-		Name:            name,
-		DashCaseName:    utils.SentenceToDashCase(name),
-		Description:     description,
-		BackendLanguage: backendLanguage,
+		Name:         name,
+		DashCaseName: utils.SentenceToDashCase(name),
+		Description:  description,
 	}
 
 	// Create the config directory.

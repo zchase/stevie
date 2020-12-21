@@ -53,7 +53,7 @@ func addFilesToZip(writer *zip.Writer, baseZipPath, baseInZip string) error {
 }
 
 // ZipDirectory zips a directory.
-func ZipDirectory(pathToDir string, pathToZip string) error {
+func ZipDirectory(pathToDir, pathToZip string) error {
 	// Create the new zip file.
 	file, err := os.Create(path.Join(pathToZip))
 	if err != nil {
@@ -81,7 +81,7 @@ func ZipDirectory(pathToDir string, pathToZip string) error {
 }
 
 // ZipFile zips a file.
-func ZipFile(fileToZipPath string, zipFilePath string, zipFileName string) error {
+func ZipFile(fileToZipPath, zipFilePath, zipFileName string) error {
 	// Create the new zip file.
 	file, err := os.Create(path.Join(zipFilePath, zipFileName))
 	if err != nil {
@@ -164,6 +164,22 @@ func IsCurrentDirectoryEmpty() (bool, error) {
 	return false, err
 }
 
+// ReadDirectoryContents reads the contents of a directory and returns
+// a list of the names of the contents.
+func ReadDirectoryContents(dirPath string) ([]string, error) {
+	directory, err := os.Open(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	contents, err := directory.Readdirnames(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return contents, nil
+}
+
 // WriteNewFile writes out a new file with the provided
 // content.
 func WriteNewFile(pathName string, fileName string, content string) error {
@@ -201,11 +217,11 @@ func CopyPackagedDirectory(oldDirPath, newDirPath string, exclustionList []strin
 
 	// Loop over the files and copy them to their new location.
 	for _, file := range files {
-		// If the file name is in the exlusion list we will skip it.
+		// If the file name is in the exclusion list we will skip it.
 		fileName := file.Name()
 		excludeFile := false
-		for _, exlusionName := range exclustionList {
-			if fileName == exlusionName {
+		for _, exclusionName := range exclustionList {
+			if fileName == exclusionName {
 				excludeFile = true
 			}
 		}
@@ -270,11 +286,11 @@ func CopyDirectory(oldDirPath, newDirPath string, exclustionList []string) error
 
 	// Loop over the files and copy them to their new location.
 	for _, file := range files {
-		// If the file name is in the exlusion list we will skip it.
+		// If the file name is in the exclusion list we will skip it.
 		fileName := file.Name()
 		excludeFile := false
-		for _, exlusionName := range exclustionList {
-			if fileName == exlusionName {
+		for _, exclusionName := range exclustionList {
+			if fileName == exclusionName {
 				excludeFile = true
 			}
 		}

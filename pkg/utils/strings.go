@@ -21,11 +21,9 @@ func CamelCaseToDashCase(name string) string {
 	return strings.Join(lowercaseParts, "-")
 }
 
-// SentenceToCamelCase turns a sentence into camelCase.
-func SentenceToCamelCase(sentence string) string {
+// stringPartsToCamelCase turns a array of strings into a camelCase word.
+func stringPartsToCamelCase(parts []string) string {
 	var finalParts []string
-	parts := strings.Split(sentence, " ")
-
 	for i, part := range parts {
 		lowercasePart := strings.ToLower(part)
 
@@ -39,6 +37,18 @@ func SentenceToCamelCase(sentence string) string {
 	}
 
 	return strings.Join(finalParts, "")
+}
+
+// DashCaseToCamelCase converts a dash case name to camel case.
+func DashCaseToCamelCase(name string) string {
+	parts := strings.Split(name, "-")
+	return stringPartsToCamelCase(parts)
+}
+
+// SentenceToCamelCase turns a sentence into camelCase.
+func SentenceToCamelCase(sentence string) string {
+	parts := strings.Split(sentence, " ")
+	return stringPartsToCamelCase(parts)
 }
 
 // SentenceToDashCase takes a sentence and turns it into

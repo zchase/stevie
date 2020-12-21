@@ -1,8 +1,7 @@
 import { controllerBuilder } from "stevie-utils";
-{{ range $method := .Methods }}
-export const {{ $method.FunctionName }}: controllerBuilder.RawRouteHandler = async (res) => {
-    return res.send({ ok: true, message: "Hello from {{ $method.FunctionName }}" });
+
+export const {{ .FunctionName }}: controllerBuilder.RawRouteHandler = async (res) => {
+    return res.send({ ok: true, message: "Hello from {{ .FunctionName }}" });
 };
 
-export const {{ $method.HandlerName }} = controllerBuilder.createRouteHandler({{ .FunctionName }});
-{{ end }}
+export const {{ .HandlerName }} = controllerBuilder.createRouteHandler({{ .FunctionName }});

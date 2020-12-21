@@ -21,7 +21,7 @@ func previewAPIChanges(cmd *cobra.Command, args []string) {
 	//
 	// TODO: add pick list to choose env if it is not set.
 	if Environment == "" {
-		utils.HandleError("Please provide an environment via the enviroment flag", nil)
+		utils.HandleError("Please provide an environment via the environment flag", nil)
 	}
 
 	// Create the preview action.
@@ -32,15 +32,11 @@ func previewAPIChanges(cmd *cobra.Command, args []string) {
 
 	// Set up the preview action
 	err := previewAction.SetUp(ctx, application.ApplicationConfigPath)
-	if err != nil {
-		utils.HandleError("Error setting up preview: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error setting up preview")
 
 	// Run the preview
 	err = previewAction.Preview(ctx)
-	if err != nil {
-		utils.HandleError("Error running preview: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error running preview")
 
 	utils.ClearLine()
 	utils.Print("Preview Completed!")
