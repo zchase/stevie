@@ -31,6 +31,9 @@ var (
 	GoFileTemplatesDirectoryName = "go"
 	GoGoModName                  = "go.mod"
 	GoGoSumName                  = "go.sum"
+
+	// Dotnet
+	DotNetFileTemplateDirectoryName = "dotnet"
 )
 
 // PackageJsonArgs define the args need to generate a package.json file.

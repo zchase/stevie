@@ -2,6 +2,7 @@ package auto_pulumi
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/zchase/stevie/pkg/utils"
@@ -31,9 +32,10 @@ func readRoutesFromControllerDirectory(controllerDirectoryPath string) ([]string
 	}
 
 	for _, contentName := range controllerDirectoryContents {
-		switch contentName {
+		lowerCaseName := strings.ToLower(contentName)
+		switch lowerCaseName {
 		case "get", "post", "put", "delete":
-			methods = append(methods, contentName)
+			methods = append(methods, lowerCaseName)
 		}
 	}
 

@@ -52,8 +52,7 @@ func addNewController(cmd *cobra.Command, args []string) {
 	// Check the backend language is valid otherwise we need to prompt the user to
 	// choose their language.
 	switch controllerLanguage {
-	case application.TypeScriptControllerLanguage:
-	case application.GoControllerLanguage:
+	case application.TypeScriptControllerLanguage, application.GoControllerLanguage, application.DotNetControllerLanguage:
 		break
 	case "":
 		controllerLanguage = promptForControllerLanguage("Please pick the language to write your controller with")

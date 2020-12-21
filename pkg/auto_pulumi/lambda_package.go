@@ -8,8 +8,34 @@ import (
 	"github.com/zchase/stevie/pkg/utils"
 )
 
+// PackageDotNetLambda packages a DotNet Lambda for distribution.
+func PackageDotNetLambda(tmpDirectoryName, routeName, method string) (string, error) {
+	name := fmt.Sprintf("%s-%s-handler", routeName, method)
+	lambdaDirectoryPath := path.Join(tmpDirectoryName, name)
+
+	// Create the temp directory for packaging the lambda if it doesn't exist.
+	err := utils.CreateNewDirectory(lambdaDirectoryPath)
+	if err != nil {
+		return "", err
+	}
+
+	dotNetControllerDirectory := path.Join("app", "controllers", routeName, method)
+	err = utils.CopyDirectory(dotNetControllerDirectory, lambdaDirectoryPath, nil)
+	if err != nil {
+		return "", utils.NewErrorMessage("Error copy dotent lambda files", err)
+	}
+
+	_, err = utils.RunCommand("dotnet", []string{"publish", lambdaDirectoryPath})
+	if err != nil {
+		return "", utils.NewErrorMessage("Error building dotnet lambda", err)
+	}
+
+	dotNetLambdaEntryPoint := path.Join(lambdaDirectoryPath, "bin", "Debug", "netcoreapp3.1", "publish")
+	return dotNetLambdaEntryPoint, nil
+}
+
 // PackageGoLambda packages a Go Lambda for distribution.
-func PackageGoLambda(tmpDirectoryName string, routeName, method string) (string, error) {
+func PackageGoLambda(tmpDirectoryName, routeName, method string) (string, error) {
 	name := fmt.Sprintf("%s-%s-handler", routeName, method)
 	lambdaDirectoryPath := path.Join(tmpDirectoryName, name)
 
