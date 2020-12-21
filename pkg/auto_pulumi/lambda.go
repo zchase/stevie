@@ -69,19 +69,31 @@ func detectLambdaLanguage(dirPath string) (string, error) {
 		return "", err
 	}
 
-	fileName := dirContents[0]
-	fileNameParts := strings.Split(fileName, ".")
-	if len(fileNameParts) < 2 {
-		return "", fmt.Errorf("Invalid file name provided.")
+	// Check the first file that is not a directory.
+	var fileNameParts []string
+	for i, content := range dirContents {
+		contentParts := strings.Split(content, ".")
+		if len(contentParts) >= 2 {
+			fileNameParts = contentParts
+			break
+		}
+
+		if i == (len(dirContents) - 1) {
+			return "", fmt.Errorf("Invalid file name provided.")
+		}
 	}
 
 	ext := fileNameParts[len(fileNameParts)-1]
+	utils.Print("File extension")
+	utils.Print(ext)
 
 	switch ext {
 	case "ts":
 		return "typescript", nil
 	case "go":
 		return "go", nil
+	case "cs", "csproj":
+		return "dotnet", nil
 	default:
 		return "", fmt.Errorf("Unsupported language file detected.")
 	}
@@ -113,6 +125,13 @@ func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.Ro
 		lambdaRuntime = "go1.x"
 		handlerName = fmt.Sprintf("%s-%s-handler", route.Name, method)
 		handlerZipFile, err = PackageGoLambda(tmpDirName, route.Name, method)
+		if err != nil {
+			return nil, err
+		}
+	case "dotnet":
+		lambdaRuntime = "dotnetcore3.1"
+		handlerName = fmt.Sprintf("app::app.Functions::%s", utils.DashCaseToSentenceCase(method))
+		handlerZipFile, err = PackageDotNetLambda(tmpDirName, route.Name, method)
 		if err != nil {
 			return nil, err
 		}

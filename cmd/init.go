@@ -18,6 +18,7 @@ var (
 	SupportedLanguages = []string{
 		application.TypeScriptControllerLanguage,
 		application.GoControllerLanguage,
+		application.DotNetControllerLanguage,
 	}
 )
 
