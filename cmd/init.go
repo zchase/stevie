@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/zchase/stevie/pkg/application"
@@ -14,11 +13,16 @@ import (
 var (
 	// Default environments.
 	DefaultEnvironments = []string{"production", "development", "testing"}
+
+	// Supported languages
+	SupportedLanguages = []string{
+		application.TypeScriptControllerLanguage,
+		application.GoControllerLanguage,
+	}
 )
 
 // Shared flags
 var Environment string
-var BackendLanguage string
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -51,17 +55,8 @@ func createNewProject(cmd *cobra.Command, args []string) {
 	// Set the config path
 	configPath := application.ApplicationConfigPath
 
-	// Check that the backend langauge is supported.
-	backendLanguage := strings.ToLower(BackendLanguage)
-	switch backendLanguage {
-	case "typescript":
-	default:
-		errMessage := fmt.Sprintf("%s is not a supported language.", BackendLanguage)
-		utils.HandleError(errMessage, nil)
-	}
-
 	// Prompt the user for the project name and description.
-	appConfig, err := CreateApplicationConfig(configPath, "", "", backendLanguage, DefaultEnvironments)
+	appConfig, err := CreateApplicationConfig(configPath, "", "", DefaultEnvironments)
 	if err != nil {
 		utils.HandleError("Error setting up application config: ", err)
 	}
@@ -76,15 +71,18 @@ func createNewProject(cmd *cobra.Command, args []string) {
 
 	// Create the Pulumi Project.
 	for _, env := range DefaultEnvironments {
-		err = auto_pulumi.CreatePulumiProject(ctx, username, appConfig.DashCaseName, env, appConfig.Description)
+		projectName, err := auto_pulumi.CreatePulumiProject(ctx, username, appConfig.DashCaseName, env, appConfig.Description)
 		if err != nil {
 			setupSpinner.Fail()
 			utils.HandleError("Error creating Pulumi project: ", err)
 		}
+
+		utils.ClearLine()
+		utils.Printf("Created project: %s", projectName)
 	}
 	setupSpinner.Stop()
 
-	// Create the intitial project structure. First we will create
+	// Create the initial project structure. First we will create
 	// the application directories.
 	createProjectSpinner := utils.TerminalSpinner{
 		SpinnerText:   "Creating your new project",
@@ -94,12 +92,9 @@ func createNewProject(cmd *cobra.Command, args []string) {
 	createProjectSpinner.Create()
 
 	// Create the project structure based on the backend-language chosen.
-	switch backendLanguage {
-	case "typescript":
-		err = application.CreateTypeScriptProject(appConfig.DashCaseName, appConfig.Description)
-		if err != nil {
-			utils.HandleError("Error creating TypeScript project: ", err)
-		}
+	err = application.CreateProjectStructure(appConfig.DashCaseName, appConfig.Description)
+	if err != nil {
+		utils.HandleError("Error creating the project structure: ", err)
 	}
 
 	createProjectSpinner.Stop()
@@ -110,6 +105,5 @@ func createNewProject(cmd *cobra.Command, args []string) {
 func init() {
 	RootCmd.AddCommand(initCmd)
 
-	RootCmd.PersistentFlags().StringVarP(&Environment, "environment", "e", "", "The environemnt you are deploying to.")
-	RootCmd.Flags().StringVar(&BackendLanguage, "backend-language", "typescript", "The langauge for writitng your serverless functions. Defaults to TypeScript.")
+	RootCmd.PersistentFlags().StringVarP(&Environment, "environment", "e", "", "The environment you are deploying to.")
 }

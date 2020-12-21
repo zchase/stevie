@@ -4,7 +4,25 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-// PromptRequiredString prompst the user for required string.
+// PromptSelection prompts the user to pick from a list of choices.
+func PromptSelection(label string, choices []string) (string, error) {
+	// Create the prompt.
+	prompt := promptui.Select{
+		Label: label,
+		Items: choices,
+	}
+
+	// Run the prompt.
+	_, result, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	// Return the choice.
+	return result, nil
+}
+
+// PromptRequiredString prompts the user for required string.
 func PromptRequiredString(label string) (string, error) {
 	// Create the prompt.
 	prompt := promptui.Prompt{

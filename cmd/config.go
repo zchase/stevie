@@ -15,11 +15,10 @@ var baseConfigName = "base"
 
 // Represents the values for the base config file.
 type ApplicationConfig struct {
-	Name            string
-	DashCaseName    string
-	Description     string
-	BackendLanguage string
-	Routes          []auto_pulumi.APIRoute
+	Name         string
+	DashCaseName string
+	Description  string
+	Routes       []auto_pulumi.APIRoute
 }
 
 // Represents the values for an environment config file.
@@ -73,7 +72,7 @@ func (c *ApplicationConfig) WriteOutBaseConfigFile(configPath string) error {
 }
 
 // AddAPIRouteToConfig adds an API Route to the base config.
-func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, methods []string, corsEnabled bool) error {
+func AddAPIRouteToConfig(configPath, name, route, pathToHandlerFiles string, corsEnabled bool) error {
 	// Read in the base config file.
 	baseConfig, err := ReadBaseConfig(configPath)
 	if err != nil {
@@ -84,10 +83,10 @@ func AddAPIRouteToConfig(configPath, name, route, handlerFilePath string, method
 	// otherwise we append the new route.
 	if baseConfig.Routes != nil {
 		baseConfig.Routes = []auto_pulumi.APIRoute{
-			application.CreateAPIRoute(name, route, handlerFilePath, methods, corsEnabled),
+			application.CreateAPIRoute(name, route, pathToHandlerFiles, corsEnabled),
 		}
 	} else {
-		baseConfig.Routes = append(baseConfig.Routes, application.CreateAPIRoute(name, route, handlerFilePath, methods, corsEnabled))
+		baseConfig.Routes = append(baseConfig.Routes, application.CreateAPIRoute(name, route, pathToHandlerFiles, corsEnabled))
 	}
 
 	// Write out the new config file.
@@ -119,7 +118,7 @@ func ReadBaseConfig(configPath string) (ApplicationConfig, error) {
 }
 
 // CreateApplicationConfig creates the application config.
-func CreateApplicationConfig(configPath, name, description, backendLanguage string, environments []string) (ApplicationConfig, error) {
+func CreateApplicationConfig(configPath, name, description string, environments []string) (ApplicationConfig, error) {
 	var err error
 
 	// If either the name or description is empty prompt the user
@@ -140,10 +139,9 @@ func CreateApplicationConfig(configPath, name, description, backendLanguage stri
 
 	// Create the config struct.
 	config := ApplicationConfig{
-		Name:            name,
-		DashCaseName:    utils.SentenceToDashCase(name),
-		Description:     description,
-		BackendLanguage: backendLanguage,
+		Name:         name,
+		DashCaseName: utils.SentenceToDashCase(name),
+		Description:  description,
 	}
 
 	// Create the config directory.

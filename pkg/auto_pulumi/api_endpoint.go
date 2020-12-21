@@ -8,7 +8,6 @@ import (
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/apigateway"
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	"github.com/zchase/stevie/pkg/utils"
 )
 
 var tmpDirName = "tmp"
@@ -203,14 +202,8 @@ type APIEndpointFunction struct {
 
 func CreateAPIEndpoint(
 	ctx *pulumi.Context, gateway *apigateway.RestApi, environment string,
-	route APIRoute,
+	route APIRoute, methods []string,
 ) (pulumi.StringOutput, error) {
-	// Compile the TypeScript
-	_, err := utils.RunCommand("yarn", []string{"build"})
-	if err != nil {
-		return pulumi.StringOutput{}, fmt.Errorf("Error compiling TypeScript code: %v", err)
-	}
-
 	// Get the AWS account.
 	account, err := aws.GetCallerIdentity(ctx)
 	if err != nil {
@@ -225,7 +218,7 @@ func CreateAPIEndpoint(
 
 	// Create the lambdas functions.
 	var lambdaFunctions []APIEndpointFunction
-	for _, method := range route.Methods {
+	for _, method := range methods {
 		function, err := CreateRouteHandler(ctx, route.Name, method)
 		if err != nil {
 			return pulumi.StringOutput{}, err
@@ -257,8 +250,6 @@ func CreateAPIEndpoint(
 	if err != nil {
 		return pulumi.StringOutput{}, err
 	}
-
-	// If CORS is enabled let's create those resources.
 
 	// Create a new deployment
 	err = createApiGatewayDeployment(

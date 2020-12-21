@@ -6,13 +6,12 @@ import (
 )
 
 // CreateAPIRoute creates an API Route.
-func CreateAPIRoute(name, route, handlerFile string, methods []string, corsEnabled bool) auto_pulumi.APIRoute {
+func CreateAPIRoute(name, route, pathToFiles string, corsEnabled bool) auto_pulumi.APIRoute {
 	return auto_pulumi.APIRoute{
 		Name:        name,
 		Route:       route,
-		HandlerFile: handlerFile,
-		Methods:     methods,
 		CorsEnabled: corsEnabled,
+		PathToFiles: pathToFiles,
 	}
 }
 

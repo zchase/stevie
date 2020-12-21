@@ -20,15 +20,25 @@ var validControllerMethods = map[string]bool{
 var name string
 var methods []string
 var corsEnabled bool
+var controllerLanguage string
 
 var addControllerCmd = &cobra.Command{
 	Use:   "add-controller",
 	Short: "Create a new file.",
 	Long:  "Create a new file.",
-	Run:   addNewFile,
+	Run:   addNewController,
 }
 
-func addNewFile(cmd *cobra.Command, args []string) {
+// promptForControllerLanguage prompts the user to select a language for
+// their new controller.
+func promptForControllerLanguage(message string) string {
+	language, err := utils.PromptSelection(message, SupportedLanguages)
+	utils.CheckForNilAndHandleError(err, "Error selecting controller language")
+
+	return language
+}
+
+func addNewController(cmd *cobra.Command, args []string) {
 	var err error
 
 	// To start let's make sure we have all the config values we
@@ -40,14 +50,19 @@ func addNewFile(cmd *cobra.Command, args []string) {
 	}
 	configSpinner.Create()
 
-	// Read the base config
-	baseConfig, err := ReadBaseConfig(application.ApplicationConfigPath)
-	if err != nil {
-		utils.HandleError("Error reading application config: %v", err)
+	// Check the backend language is valid otherwise we need to prompt the user to
+	// choose their language.
+	switch controllerLanguage {
+	case application.TypeScriptControllerLanguage:
+	case application.GoControllerLanguage:
+		break
+	case "":
+		controllerLanguage = promptForControllerLanguage("Please pick the language to write your controller with")
+		break
+	default:
+		controllerLanguage = promptForControllerLanguage("Unknown controller langauge provided. Please selected a valid language")
+		break
 	}
-
-	// Set the backend langauge for creating the controller.
-	backendLanguage := baseConfig.BackendLanguage
 
 	// Check if the name is defined and if it is not prompt
 	// the user for the controller name.
@@ -55,7 +70,7 @@ func addNewFile(cmd *cobra.Command, args []string) {
 		name, err = utils.PromptRequiredString("What is the name of the controller?")
 		if err != nil {
 			configSpinner.Fail()
-			utils.HandleError("Error prompting for controller name: ", err)
+			utils.HandleError("Error prompting for controller name", err)
 		}
 	}
 
@@ -69,7 +84,7 @@ func addNewFile(cmd *cobra.Command, args []string) {
 			utils.HandleError(errMsg, nil)
 		}
 
-		controllerMethods = append(controllerMethods, method)
+		controllerMethods = append(controllerMethods, strings.ToLower(method))
 	}
 	configSpinner.Stop()
 
@@ -81,25 +96,13 @@ func addNewFile(cmd *cobra.Command, args []string) {
 	}
 	controllerSpinner.Create()
 
-	// Create the controller file.
-	switch backendLanguage {
-	case "typescript":
-		controllerFile, err := application.CreateNewTypeScriptController(name, controllerMethods)
-		if err != nil {
-			utils.HandleError("Error creating TypeScript controller: ", err)
-		}
+	// Create the controller file(s).
+	controllerPath, err := application.CreateNewController(name, methods, controllerLanguage)
+	utils.CheckForNilAndHandleError(err, "Error creating controller files")
 
-		err = AddAPIRouteToConfig(
-			application.ApplicationConfigPath, name, fmt.Sprintf("/%s", name), controllerFile, controllerMethods,
-			corsEnabled,
-		)
-		if err != nil {
-			utils.HandleError("Error adding route to config: ", err)
-		}
-	default:
-		errMessage := fmt.Sprintf("Unsupported langauge in config: %x", backendLanguage)
-		utils.HandleError(errMessage, nil)
-	}
+	// Add the controller to the config.
+	err = AddAPIRouteToConfig(application.ApplicationConfigPath, name, fmt.Sprintf("/%s", name), controllerPath, corsEnabled)
+	utils.CheckForNilAndHandleError(err, "Error writing new controller to config")
 
 	// Output the controller has been created.
 	controllerSpinner.Stop()
@@ -111,5 +114,6 @@ func init() {
 
 	addControllerCmd.Flags().StringVar(&name, "name", "", "The name for the controller in camelCase.")
 	addControllerCmd.Flags().StringSliceVar(&methods, "methods", []string{"GET"}, "The methods for your route. GET, POST, PUT, & DELETE.")
+	addControllerCmd.Flags().StringVar(&controllerLanguage, "language", "", "The language you are using to write your controller.")
 	addControllerCmd.Flags().BoolVar(&corsEnabled, "cors", false, "Enable CORS on your path.")
 }
