@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/zchase/stevie/pkg/utils"
 )
 
 // createIAMLambdaRole creates an IAM role for a Lambda
@@ -60,12 +61,63 @@ func createLambdaLogPolicy(ctx *pulumi.Context, role *iam.Role, name string) (*i
 	return logPolicy, nil
 }
 
+// detectLambdaLanguage figures out the language of lambda by looking at the
+// the file extension.
+func detectLambdaLanguage(dirPath string) (string, error) {
+	dirContents, err := utils.ReadDirectoryContents(dirPath)
+	if err != nil {
+		return "", err
+	}
+
+	fileName := dirContents[0]
+	fileNameParts := strings.Split(fileName, ".")
+	if len(fileNameParts) < 2 {
+		return "", fmt.Errorf("Invalid file name provided.")
+	}
+
+	ext := fileNameParts[len(fileNameParts)-1]
+
+	switch ext {
+	case "ts":
+		return "typescript", nil
+	case "go":
+		return "go", nil
+	default:
+		return "", fmt.Errorf("Unsupported language file detected.")
+	}
+}
+
 // createLambdaFunction creates a Lambda function
-func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.RolePolicy, name, method string) (*lambda.Function, error) {
-	// Zip the handler for the specific Lambda.
-	handlerZipFile, err := PackageTypeScriptLambda(tmpDirName, name)
+func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.RolePolicy, route APIRoute, method string) (*lambda.Function, error) {
+	// Determine the language of the function.
+	lambdaFilePath := path.Join(route.PathToFiles, method)
+	lambdaLanguage, err := detectLambdaLanguage(lambdaFilePath)
 	if err != nil {
 		return nil, err
+	}
+
+	// Determine the Lambda runtime to use.
+	var lambdaRuntime string
+	var handlerName string
+	var handlerZipFile string
+	switch lambdaLanguage {
+	case "typescript":
+		lambdaRuntime = "nodejs12.x"
+		handlerName = fmt.Sprintf("%s-%s-handler.%sHandler", route.Name, method, method)
+		handlerZipFile, err = PackageTypeScriptLambda(tmpDirName, route.Name, method)
+		if err != nil {
+			return nil, err
+		}
+		break
+	case "go":
+		lambdaRuntime = "go1.x"
+		handlerName = fmt.Sprintf("%s-%s-handler", route.Name, method)
+		handlerZipFile, err = PackageGoLambda(tmpDirName, route.Name, method)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("Unsupported runtime detected.")
 	}
 
 	currentWorkingDirectory, err := os.Getwd()
@@ -74,18 +126,17 @@ func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.Ro
 	}
 
 	handlerFileName := path.Join(currentWorkingDirectory, handlerZipFile)
-	handlerName := fmt.Sprintf("%s.%sHandler", name, strings.ToLower(method))
 	args := &lambda.FunctionArgs{
 		Handler: pulumi.String(handlerName),
 		Role:    role.Arn,
-		Runtime: pulumi.String("nodejs12.x"),
+		Runtime: pulumi.String(lambdaRuntime),
 		Code:    pulumi.NewFileArchive(handlerFileName),
 	}
 
 	// Create the lambda using the args.
 	function, err := lambda.NewFunction(
 		ctx,
-		fmt.Sprintf("%s-%s-lambda-function", name, method),
+		fmt.Sprintf("%s-%s-lambda-function", route.Name, method),
 		args,
 		pulumi.DependsOn([]pulumi.Resource{logPolicy}),
 	)
@@ -97,8 +148,8 @@ func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.Ro
 }
 
 // CreateRouteHandler creates a Lambda function used for handling API Gateway requests.
-func CreateRouteHandler(ctx *pulumi.Context, name, method string) (*lambda.Function, error) {
-	lambdaName := fmt.Sprintf("%s-%s", name, method)
+func CreateRouteHandler(ctx *pulumi.Context, route APIRoute, method string) (*lambda.Function, error) {
+	lambdaName := fmt.Sprintf("%s-%s", route.Name, method)
 
 	// Create the role.
 	role, err := createIAMLambdaRole(ctx, lambdaName)
@@ -113,7 +164,7 @@ func CreateRouteHandler(ctx *pulumi.Context, name, method string) (*lambda.Funct
 	}
 
 	// Create the function.
-	function, err := createLambdaFunction(ctx, role, logPolicy, name, method)
+	function, err := createLambdaFunction(ctx, role, logPolicy, route, method)
 	if err != nil {
 		return nil, err
 	}

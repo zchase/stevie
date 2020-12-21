@@ -72,12 +72,12 @@ func CreateNewController(name string, methods []string, language string) (string
 // createGoTopLevelFiles creates the top level files for a go controller.
 func createGoTopLevelFiles(dirPath string) error {
 	// Create the go.mod and go.sum files.
-	err := utils.WriteNewFile(dirPath, GoGoModName, "")
+	err := utils.WriteNewFile("", GoGoModName, "")
 	if err != nil {
 		return fmt.Errorf("Error creating go.mod: %v", err)
 	}
 
-	err = utils.WriteNewFile(dirPath, GoGoSumName, "")
+	err = utils.WriteNewFile("", GoGoSumName, "")
 	if err != nil {
 		return fmt.Errorf("Error creating go.sum: %v", err)
 	}
@@ -86,9 +86,8 @@ func createGoTopLevelFiles(dirPath string) error {
 }
 
 type GoControllerFileArgs struct {
-	PackageName string
-	Method      string
-	Route       string
+	Method string
+	Route  string
 }
 
 // CreateNewGoController creates a new Go controller.
@@ -98,9 +97,8 @@ func createNewGoController(dirPath, name, method string) error {
 	goControllerFilePath := path.Join(dirPath, goControllerFileName)
 
 	err := utils.WriteOutTemplateToFile(goControllerTemplatePath, goControllerFilePath, GoControllerFileArgs{
-		PackageName: fmt.Sprintf("%s_%s", strings.ReplaceAll(name, "-", "_"), method),
-		Method:      method,
-		Route:       fmt.Sprintf("/%s", name),
+		Method: method,
+		Route:  fmt.Sprintf("/%s", name),
 	})
 	if err != nil {
 		return fmt.Errorf("Error creating controller file: %v", err)
@@ -156,7 +154,7 @@ func createNewTypeScriptController(dirPath, name, method string) error {
 	controllerFilePath := path.Join(dirPath, controllerFileName)
 
 	// Create the function and handler names.
-	functionNameParts := fmt.Sprintf("%s %s", name, method)
+	functionNameParts := fmt.Sprintf("%s %s", utils.DashCaseToCamelCase(name), method)
 	functionName := utils.SentenceToCamelCase(functionNameParts)
 	handlerName := fmt.Sprintf("%sHandler", strings.ToLower(method))
 

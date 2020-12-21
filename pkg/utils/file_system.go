@@ -53,7 +53,7 @@ func addFilesToZip(writer *zip.Writer, baseZipPath, baseInZip string) error {
 }
 
 // ZipDirectory zips a directory.
-func ZipDirectory(pathToDir string, pathToZip string) error {
+func ZipDirectory(pathToDir, pathToZip string) error {
 	// Create the new zip file.
 	file, err := os.Create(path.Join(pathToZip))
 	if err != nil {
@@ -81,7 +81,7 @@ func ZipDirectory(pathToDir string, pathToZip string) error {
 }
 
 // ZipFile zips a file.
-func ZipFile(fileToZipPath string, zipFilePath string, zipFileName string) error {
+func ZipFile(fileToZipPath, zipFilePath, zipFileName string) error {
 	// Create the new zip file.
 	file, err := os.Create(path.Join(zipFilePath, zipFileName))
 	if err != nil {

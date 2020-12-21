@@ -40,7 +40,7 @@ func createAPIGatewayRouteMethods(
 		methodResourceName := fmt.Sprintf("%s-api-%s-method", name, method.Method)
 
 		_, err := apigateway.NewMethod(ctx, methodResourceName, &apigateway.MethodArgs{
-			HttpMethod:    pulumi.String(method.Method),
+			HttpMethod:    pulumi.String(strings.ToUpper(method.Method)),
 			Authorization: pulumi.String("NONE"),
 			RestApi:       gatewayID,
 			ResourceId:    resourceID,
@@ -66,7 +66,7 @@ func createAPIGatewayIntegration(
 		integrationName := fmt.Sprintf("%s-%s-lambda-integration", name, method.Method)
 
 		_, err := apigateway.NewIntegration(ctx, integrationName, &apigateway.IntegrationArgs{
-			HttpMethod:            pulumi.String(method.Method),
+			HttpMethod:            pulumi.String(strings.ToUpper(method.Method)),
 			IntegrationHttpMethod: pulumi.String("POST"),
 			ResourceId:            apiResource.ID(),
 			RestApi:               gateway.ID(),
@@ -219,7 +219,7 @@ func CreateAPIEndpoint(
 	// Create the lambdas functions.
 	var lambdaFunctions []APIEndpointFunction
 	for _, method := range methods {
-		function, err := CreateRouteHandler(ctx, route.Name, method)
+		function, err := CreateRouteHandler(ctx, route, method)
 		if err != nil {
 			return pulumi.StringOutput{}, err
 		}

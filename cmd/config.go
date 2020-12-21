@@ -71,7 +71,7 @@ func AddAPIRouteToConfig(configPath, name, route, pathToHandlerFiles string, cor
 
 	// If the routes doesn't exist let's add this new route as the first object
 	// otherwise we append the new route.
-	if baseConfig.Routes != nil {
+	if baseConfig.Routes == nil {
 		baseConfig.Routes = []auto_pulumi.APIRoute{
 			application.CreateAPIRoute(name, route, pathToHandlerFiles, corsEnabled),
 		}

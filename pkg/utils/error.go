@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -10,6 +11,11 @@ func CheckForNilAndHandleError(err error, message string) {
 	if err != nil {
 		log.Fatalf("%s: %v", message, err)
 	}
+}
+
+// NewErrorMessage creates a new error with a given message.
+func NewErrorMessage(message string, err error) error {
+	return fmt.Errorf("%s: %v", message, err)
 }
 
 // HandleError outputs error messages and exits the program.

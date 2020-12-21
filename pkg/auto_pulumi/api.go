@@ -32,10 +32,7 @@ func readRoutesFromControllerDirectory(controllerDirectoryPath string) ([]string
 
 	for _, contentName := range controllerDirectoryContents {
 		switch contentName {
-		case "get":
-		case "post":
-		case "put":
-		case "delete":
+		case "get", "post", "put", "delete":
 			methods = append(methods, contentName)
 		}
 	}

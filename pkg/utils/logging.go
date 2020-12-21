@@ -72,6 +72,11 @@ func (t *TerminalSpinner) Fail() {
 	Print(t.FailureText)
 }
 
+func (t *TerminalSpinner) FailWithMessage(message string, err error) error {
+	t.Fail()
+	return NewErrorMessage(message, err)
+}
+
 // CreateNewTerminalSpinner creates a new terminal spinner.
 func CreateNewTerminalSpinner(spinnerText, completedText, failureText string) TerminalSpinner {
 	spinner := TerminalSpinner{
