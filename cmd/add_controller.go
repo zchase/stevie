@@ -43,12 +43,11 @@ func addNewController(cmd *cobra.Command, args []string) {
 
 	// To start let's make sure we have all the config values we
 	// need to create the route.
-	configSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Configuring controller",
-		CompletedText: "✅ Successfully configured controller.",
-		FailureText:   "❌ Failed configuring controller.",
-	}
-	configSpinner.Create()
+	configSpinner := utils.CreateNewTerminalSpinner(
+		"Configuring controller",
+		"Successfully configured controller.",
+		"Failed configuring controller.",
+	)
 
 	// Check the backend language is valid otherwise we need to prompt the user to
 	// choose their language.
@@ -86,15 +85,14 @@ func addNewController(cmd *cobra.Command, args []string) {
 
 		controllerMethods = append(controllerMethods, strings.ToLower(method))
 	}
-	configSpinner.Stop()
 
 	// Create the controller file.
-	controllerSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Creating controller files.",
-		CompletedText: "✅ Successfully created controller.",
-		FailureText:   "❌ Failed to create controller.",
-	}
-	controllerSpinner.Create()
+	configSpinner.Stop()
+	controllerSpinner := utils.CreateNewTerminalSpinner(
+		"Creating controller files.",
+		"Successfully created controller.",
+		"Failed to create controller.",
+	)
 
 	// Create the controller file(s).
 	controllerPath, err := application.CreateNewController(name, methods, controllerLanguage)

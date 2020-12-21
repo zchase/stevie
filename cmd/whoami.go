@@ -12,9 +12,7 @@ import (
 func whoAmI(cmd *cobra.Command, args []string) {
 	// Get the Pulumi username.
 	username, err := auto_pulumi.GetCurrentPulumiUser()
-	if err != nil {
-		utils.HandleError("Error getting currently logged in user: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error getting currently logged in user")
 
 	utils.Printf("The currently logged in user is: %s", utils.TextColor(username, color.FgGreen))
 }

@@ -14,15 +14,11 @@ func runLocal(cmd *cobra.Command, args []string) {
 
 	// Read the config.
 	config, err := ReadBaseConfig(application.ApplicationConfigPath)
-	if err != nil {
-		utils.HandleError("Error reading base config: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error reading base config")
 
 	// Run the routes.
 	err = application.RunTypeScriptRoutesLocally(config.Routes, localServerPort)
-	if err != nil {
-		utils.HandleError("Error running local server: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error running local server")
 
 	utils.Print("Finished running local server")
 }

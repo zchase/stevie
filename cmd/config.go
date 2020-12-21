@@ -44,12 +44,7 @@ func (c *ApplicationConfig) WriteOutBaseEnvironmentConfigFile(configPath, env st
 
 	// Create the config file.
 	envFileName := fmt.Sprintf("%s.yaml", env)
-	err = utils.WriteNewFile(configPath, envFileName, string(contents))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return utils.WriteNewFile(configPath, envFileName, string(contents))
 }
 
 // WriteOutBaseConfigFile writes out the base config file.
@@ -63,12 +58,7 @@ func (c *ApplicationConfig) WriteOutBaseConfigFile(configPath string) error {
 	}
 
 	// Write out the base config file.
-	err = utils.WriteNewFile(configPath, baseConfigFileName, string(contents))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return utils.WriteNewFile(configPath, baseConfigFileName, string(contents))
 }
 
 // AddAPIRouteToConfig adds an API Route to the base config.
@@ -90,12 +80,7 @@ func AddAPIRouteToConfig(configPath, name, route, pathToHandlerFiles string, cor
 	}
 
 	// Write out the new config file.
-	err = baseConfig.WriteOutBaseConfigFile(configPath)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return baseConfig.WriteOutBaseConfigFile(configPath)
 }
 
 // ReadBaseConfig reads out the base config.
@@ -110,11 +95,7 @@ func ReadBaseConfig(configPath string) (ApplicationConfig, error) {
 	// Unmarshal the config file.
 	var appConfig ApplicationConfig
 	err = yaml.Unmarshal(configBytes, &appConfig)
-	if err != nil {
-		return ApplicationConfig{}, err
-	}
-
-	return appConfig, nil
+	return appConfig, err
 }
 
 // CreateApplicationConfig creates the application config.

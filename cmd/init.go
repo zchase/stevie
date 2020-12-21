@@ -37,9 +37,7 @@ func createNewProject(cmd *cobra.Command, args []string) {
 
 	// Check if the working directory is empty.
 	isEmptyDir, err := utils.IsCurrentDirectoryEmpty()
-	if err != nil {
-		utils.HandleError("Error checking contents of current working directory: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error checking contents of current working directory")
 
 	// Throw an error if the current working directory is not empty.
 	if isEmptyDir == false {
@@ -48,54 +46,46 @@ func createNewProject(cmd *cobra.Command, args []string) {
 
 	// Check the user is logged in.
 	username, err := auto_pulumi.GetCurrentPulumiUser()
-	if err != nil {
-		utils.HandleError("Error checking for authenticated user: %v", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error checking for authenticated user")
 
 	// Set the config path
 	configPath := application.ApplicationConfigPath
 
 	// Prompt the user for the project name and description.
 	appConfig, err := CreateApplicationConfig(configPath, "", "", DefaultEnvironments)
-	if err != nil {
-		utils.HandleError("Error setting up application config: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error setting up application config")
 
 	// Create the spinner for the new project.
-	setupSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Setting up your new project",
-		CompletedText: "✅ Successfully set up project.",
-		FailureText:   "❌ Failed to set up project",
-	}
-	setupSpinner.Create()
+	setupSpinner := utils.CreateNewTerminalSpinner(
+		"Setting up your new project",
+		"Successfully set up project.",
+		"Failed to set up project",
+	)
 
 	// Create the Pulumi Project.
 	for _, env := range DefaultEnvironments {
 		projectName, err := auto_pulumi.CreatePulumiProject(ctx, username, appConfig.DashCaseName, env, appConfig.Description)
 		if err != nil {
 			setupSpinner.Fail()
-			utils.HandleError("Error creating Pulumi project: ", err)
+			utils.HandleError("Error creating Pulumi project", err)
 		}
 
-		utils.ClearLine()
+		//utils.ClearLine()
 		utils.Printf("Created project: %s", projectName)
 	}
 	setupSpinner.Stop()
 
 	// Create the initial project structure. First we will create
 	// the application directories.
-	createProjectSpinner := utils.TerminalSpinner{
-		SpinnerText:   "Creating your new project",
-		CompletedText: "✅ Successfully created your project.",
-		FailureText:   "❌ Failed to create your project",
-	}
-	createProjectSpinner.Create()
+	createProjectSpinner := utils.CreateNewTerminalSpinner(
+		"Creating your new project",
+		"Successfully created your project.",
+		"Failed to create your project.",
+	)
 
 	// Create the project structure based on the backend-language chosen.
 	err = application.CreateProjectStructure(appConfig.DashCaseName, appConfig.Description)
-	if err != nil {
-		utils.HandleError("Error creating the project structure: ", err)
-	}
+	utils.CheckForNilAndHandleError(err, "Error creating the project structure")
 
 	createProjectSpinner.Stop()
 	utils.ClearLine()
