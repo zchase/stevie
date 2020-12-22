@@ -2,9 +2,12 @@ package auto_pulumi
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"sort"
 	"strings"
 
+	tm "github.com/buger/goterm"
 	"github.com/fatih/color"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
@@ -153,6 +156,116 @@ func (a *PulumiAction) Preview(ctx context.Context) error {
 	return nil
 }
 
+type PulumiActionResourceOutput struct {
+	Parts []string
+	Order int
+}
+
+type PulumiUpdateOutputLogger struct {
+	Headers              []string
+	Rows                 map[string]PulumiActionResourceOutput
+	NewRowsAdded         int
+	TableWriteInProgress bool
+	FirstPrintDone       bool
+}
+
+func (p *PulumiUpdateOutputLogger) Write(msg []byte) (int, error) {
+	p.AddRow(string(msg))
+
+	if len(p.Rows) > 0 && p.TableWriteInProgress == false {
+		// Clear the line above so the spinner doesn't log.
+		fmt.Printf("\033[2K")
+		fmt.Println()
+		fmt.Printf("\033[1A")
+		p.WriteTable()
+	}
+	return len(msg), nil
+}
+
+func (p *PulumiUpdateOutputLogger) WriteTable() {
+	p.TableWriteInProgress = true
+	// Create the table.
+	table := utils.CreateTerminalTable()
+
+	rowLength := len(p.Rows)
+	if p.NewRowsAdded > 0 {
+		oldRows := rowLength - p.NewRowsAdded
+		tm.MoveCursorUp(oldRows + 2)
+		p.NewRowsAdded = 0
+	} else {
+		tm.MoveCursorUp(rowLength + 2)
+		p.FirstPrintDone = true
+	}
+
+	// Add the table headers.
+	table.AddRow("\033[2K\r    %s\n", strings.Join(p.Headers, "\t"))
+
+	// Sort the table rows so we can keep consistent ordering. Otherwise it can be hard
+	// to track what is actually happenning.
+	var sortedRows []PulumiActionResourceOutput
+	for _, row := range p.Rows {
+		sortedRows = append(sortedRows, row)
+	}
+	sort.Slice(sortedRows, func(i, j int) bool {
+		return sortedRows[i].Order < sortedRows[j].Order
+	})
+
+	// Add the table rows.
+	for _, row := range sortedRows {
+		table.AddRow("\033[2K\r    %s\n", strings.Join(row.Parts, "\t"))
+	}
+
+	tm.Printf("%s\n", table.Table)
+	tm.Flush()
+	p.TableWriteInProgress = false
+}
+
+func (p *PulumiUpdateOutputLogger) AddRow(msg string) {
+	msgParts := strings.Split(msg, " ")
+
+	if len(msgParts) == 7 {
+
+		urn := msgParts[3]
+		name := msgParts[4]
+		status := msgParts[5]
+
+		var colorfulStatus string
+		switch status {
+		case "creating", "deleting", "updating":
+			colorfulStatus = utils.TextColor(status, color.FgYellow)
+			break
+		case "created", "updated":
+			colorfulStatus = utils.TextColor(status, color.FgGreen)
+			break
+		case "deleted":
+			colorfulStatus = utils.TextColor(status, color.FgRed)
+		default:
+			colorfulStatus = status
+		}
+
+		// The Pulumi Stack resource never reports back as created from the streaming
+		// ourput so lets ignore that row from our table.
+		if urn == "pulumi:pulumi:Stack" {
+			return
+		}
+
+		hash := utils.HashStringMD5(fmt.Sprintf("%s%s", name, urn))
+		if val, ok := p.Rows[hash]; ok {
+			p.Rows[hash] = PulumiActionResourceOutput{
+				Order: val.Order,
+				Parts: []string{name, urn, colorfulStatus},
+			}
+
+		} else {
+			p.NewRowsAdded += 1
+			p.Rows[hash] = PulumiActionResourceOutput{
+				Order: len(p.Rows) + 1,
+				Parts: []string{name, urn, colorfulStatus},
+			}
+		}
+	}
+}
+
 // Update runs an update of the infrastructure.
 func (a *PulumiAction) Update(ctx context.Context) error {
 	// Create a spinner.
@@ -162,10 +275,19 @@ func (a *PulumiAction) Update(ctx context.Context) error {
 		"Update failed.",
 	)
 	actionSpinner.SetOutput(os.Stdout)
-	outputLogger := utils.TerminalSpinnerLogger{}
+	outputLogger := &PulumiUpdateOutputLogger{
+		Headers: []string{"Name", "URN", "Status"},
+		Rows:    make(map[string]PulumiActionResourceOutput),
+	}
+
+	// The terminal table constantly replaces itself so we need to create
+	// two buffer lines to handle the behavior.
+	utils.Print("")
+	utils.Print("")
+	utils.Print("")
 
 	// Stream the results to the terminal.
-	outputStreamer := optup.ProgressStreams(&outputLogger)
+	outputStreamer := optup.ProgressStreams(outputLogger)
 
 	// Run the action.
 	result, err := a.Stack.Up(ctx, outputStreamer)
@@ -198,7 +320,16 @@ func (a *PulumiAction) Destroy(ctx context.Context) error {
 		"Destroy completed successfully.",
 		"Destroy failed.",
 	)
-	outputLogger := utils.TerminalSpinnerLogger{}
+	outputLogger := PulumiUpdateOutputLogger{
+		Headers: []string{"Name", "URN", "Status"},
+		Rows:    make(map[string]PulumiActionResourceOutput),
+	}
+
+	// The terminal table constantly replaces itself so we need to create
+	// two buffer lines to handle the behavior.
+	utils.Print("")
+	utils.Print("")
+	utils.Print("")
 
 	// Stream the results to the terminal.
 	outputStreamer := optdestroy.ProgressStreams(&outputLogger)

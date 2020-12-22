@@ -83,11 +83,7 @@ func detectLambdaLanguage(dirPath string) (string, error) {
 		}
 	}
 
-	ext := fileNameParts[len(fileNameParts)-1]
-	utils.Print("File extension")
-	utils.Print(ext)
-
-	switch ext {
+	switch fileNameParts[len(fileNameParts)-1] {
 	case "ts":
 		return "typescript", nil
 	case "go":

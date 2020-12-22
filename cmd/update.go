@@ -34,8 +34,6 @@ func updateAPIChanges(cmd *cobra.Command, args []string) {
 	// Run the preview
 	err = updateAction.Update(ctx)
 	utils.CheckForNilAndHandleError(err, "Error running update")
-
-	fmt.Println("Update Completed!")
 }
 
 var updateCmd = &cobra.Command{

@@ -34,8 +34,6 @@ func destroyAPI(cmd *cobra.Command, args []string) {
 	// Run the preview
 	err = updateAction.Destroy(ctx)
 	utils.CheckForNilAndHandleError(err, "Error destroy API resources")
-
-	fmt.Println("Destroy Completed!")
 }
 
 var destroyCmd = &cobra.Command{

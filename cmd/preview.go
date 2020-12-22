@@ -39,7 +39,6 @@ func previewAPIChanges(cmd *cobra.Command, args []string) {
 	utils.CheckForNilAndHandleError(err, "Error running preview")
 
 	utils.ClearLine()
-	utils.Print("Preview Completed!")
 }
 
 var previewCmd = &cobra.Command{
