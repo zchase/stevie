@@ -1,10 +1,18 @@
 package utils
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"strings"
 
 	"github.com/fatih/camelcase"
 )
+
+// HashStringMD5 hashes a string with md5.
+func HashStringMD5(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
 
 func convertStringsToLowerCase(parts []string) []string {
 	var lowercaseParts []string
