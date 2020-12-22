@@ -66,11 +66,15 @@ func PromptForPulumiAccessToken() error {
 func GetCurrentPulumiUser() (string, error) {
 	output, err := utils.RunCommand("pulumi", []string{"whoami"})
 	if err != nil {
-		err = PromptForPulumiAccessToken()
-		if err != nil {
-			return "", fmt.Errorf("Couldn't successfully authenticate the Pulumi users: %v", err)
-		}
+		return "", fmt.Errorf("Couldn't successfully authenticate the Pulumi user")
 	}
 
 	return strings.TrimSpace(output), nil
+}
+
+// LogoutCurrentUser logouts out the current user from the Pulumi CLI.
+func LogoutCurrentUser(args []string) error {
+	logoutArgs := append([]string{"logout"}, args...)
+	_, err := utils.RunCommand("pulumi", logoutArgs)
+	return err
 }
