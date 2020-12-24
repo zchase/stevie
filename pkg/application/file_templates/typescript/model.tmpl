@@ -1,0 +1,25 @@
+export interface {{ .Name }} {
+    /**
+     * The description for the hash key.
+     *
+     * @hashKey true
+     * @TJS-hashKey true
+     {{ if eq .HashKeyType "number" }}
+     * @TJS-number integer
+     {{ end }}
+     */
+    {{ .HashKeyName }}: {{ .HashKeyType }};
+
+    {{ if ne .RangeKeyName "" }}
+    /**
+     * The description for the range key.
+     *
+     * @rangeKey true
+     * @TJS-rangeKey true
+     {{ if eq .RangeKeyType "number" }}
+     * @TJS-number integer
+     {{ end }}
+     */
+     {{ .RangeKeyName }}: {{ .RangeKeyType }};
+    {{ end }}
+}

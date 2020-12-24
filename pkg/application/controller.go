@@ -14,6 +14,83 @@ const (
 	DotNetControllerLanguage     = "dotnet"
 )
 
+var crudTemplateMap = map[string]string{
+	"get":    "read_controller.tmpl",
+	"post":   "create_controller.tmpl",
+	"put":    "update_controller.tmpl",
+	"delete": "delete_controller.tmpl",
+}
+
+// GenerateControllerFromModelSchema generates CRUD APIs from a model schema.
+func GenerateControllerFromModelSchema(name, language string, schema utils.JSONSchema) (string, error) {
+	// Create the main controller directory.
+	controllerDirectoryPath := path.Join(ApplicationFolder, ControllersFolder, name)
+	err := utils.CreateNewDirectory(controllerDirectoryPath)
+	if err != nil {
+		return "", fmt.Errorf("Error creating main controller directory: %v", err)
+	}
+
+	// Create any top level files needed for the controller.
+	switch language {
+	case TypeScriptControllerLanguage:
+		err = createTypeScriptTopLevelFiles(controllerDirectoryPath, name, "")
+		if err != nil {
+			return "", err
+		}
+		break
+	default:
+		return "", fmt.Errorf("Language not supported: %s", language)
+	}
+
+	// Set the hash key and range key values
+	var hashKeyName string
+	var hashKeyType string
+	var rangeKeyName string
+	var rangeKeyType string
+	schemaProperties := schema.Definitions[utils.DashCaseToSentenceCase(name)].Properties
+	for name, prop := range schemaProperties {
+		if prop.HashKey == true {
+			hashKeyName = name
+			hashKeyType = prop.Type
+		}
+		if prop.RangeKey == true {
+			rangeKeyName = name
+			rangeKeyType = prop.Type
+		}
+	}
+
+	// Loop through the methods.
+	for _, method := range [4]string{"get", "post", "put", "delete"} {
+		// Create the handler directory.
+		controllerHandlerDirectoryPath := path.Join(controllerDirectoryPath, method)
+		err = utils.CreateNewDirectory(controllerHandlerDirectoryPath)
+		if err != nil {
+			return "", fmt.Errorf("Error creating handler directory for %s method on route %s: %v", name, method, err)
+		}
+
+		// Create the handler's files.
+		fileTemplate := crudTemplateMap[method]
+		switch language {
+		case TypeScriptControllerLanguage:
+			err = createNewTypeScriptControllerCRUD(controllerHandlerDirectoryPath, name, method, fileTemplate, TypeScriptControllerCRUDArgs{
+				ModelName:         name,
+				TableHashKey:      hashKeyName,
+				TableHashKeyType:  hashKeyType,
+				TableRangeKey:     rangeKeyName,
+				TableRangeKeyType: rangeKeyType,
+				TableEnvVar:       fmt.Sprintf("%s_TABLE_NAME", strings.ToUpper(name)),
+				ModelImportName:   utils.DashCaseToSentenceCase(name),
+			})
+			if err != nil {
+				return "", err
+			}
+			break
+		}
+	}
+
+	return controllerDirectoryPath, nil
+}
+
 // CreateNewController creates a new controller.
 func CreateNewController(name string, methods []string, language string) (string, error) {
 	// Create the main controller directory.
@@ -61,7 +138,7 @@ func CreateNewController(name string, methods []string, language string) (string
 			}
 			break
 		case TypeScriptControllerLanguage:
-			err = createNewTypeScriptController(controllerHandlerDirectoryPath, name, method)
+			err = createNewTypeScriptController(controllerHandlerDirectoryPath, name, method, "controller.tmpl")
 			if err != nil {
 				return "", err
 			}
@@ -187,9 +264,9 @@ type TypeScriptControllerFileArgs struct {
 }
 
 // createNewTypeScriptController creates a new TypeScript controller.
-func createNewTypeScriptController(dirPath, name, method string) error {
+func createNewTypeScriptController(dirPath, name, method, fileTemplate string) error {
 	// Create the file paths.
-	controllerTemplatePath := path.Join(FileTemplatePath, TypeScriptFileTemplatesDirectoryName, "controller.tmpl")
+	controllerTemplatePath := path.Join(FileTemplatePath, TypeScriptFileTemplatesDirectoryName, fileTemplate)
 	controllerFileName := fmt.Sprintf("%s.ts", strings.ToLower(method))
 	controllerFilePath := path.Join(dirPath, controllerFileName)
 
@@ -202,6 +279,42 @@ func createNewTypeScriptController(dirPath, name, method string) error {
 		FunctionName: functionName,
 		HandlerName:  handlerName,
 	})
+	if err != nil {
+		return fmt.Errorf("Error writing out controller file for %s method on route %s: %v", method, name, err)
+	}
+
+	return nil
+}
+
+type TypeScriptControllerCRUDArgs struct {
+	FunctionName      string
+	HandlerName       string
+	ModelName         string
+	TableHashKey      string
+	TableHashKeyType  string
+	TableRangeKey     string
+	TableRangeKeyType string
+	TableEnvVar       string
+	ModelImportName   string
+}
+
+func createNewTypeScriptControllerCRUD(
+	dirPath, name, method, fileTemplate string, templateArgs TypeScriptControllerCRUDArgs,
+) error {
+	// Create the file paths.
+	controllerTemplatePath := path.Join(FileTemplatePath, TypeScriptFileTemplatesDirectoryName, fileTemplate)
+	controllerFileName := fmt.Sprintf("%s.ts", strings.ToLower(method))
+	controllerFilePath := path.Join(dirPath, controllerFileName)
+
+	// Create the function and handler names.
+	functionNameParts := fmt.Sprintf("%s %s", utils.DashCaseToCamelCase(name), method)
+	functionName := utils.SentenceToCamelCase(functionNameParts)
+	handlerName := fmt.Sprintf("%sHandler", strings.ToLower(method))
+
+	templateArgs.FunctionName = functionName
+	templateArgs.HandlerName = handlerName
+
+	err := utils.WriteOutTemplateToFile(controllerTemplatePath, controllerFilePath, templateArgs)
 	if err != nil {
 		return fmt.Errorf("Error writing out controller file for %s method on route %s: %v", method, name, err)
 	}

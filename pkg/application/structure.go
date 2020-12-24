@@ -1,7 +1,6 @@
 package application
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/zchase/stevie/pkg/utils"
@@ -14,12 +13,14 @@ var (
 	// Directories
 	ApplicationFolder = "app"
 	ControllersFolder = "controllers"
+	ModelsFolder      = "models"
 
 	// File template paths
 	FileTemplatePath = "/pkg/application/file_templates"
 	LocalPackagePath = "/lib"
 
 	// TypeScript
+	TypeScriptLanguage                   = "typescript"
 	TypeScriptFileTemplatesDirectoryName = "typescript"
 	TypeScriptTSConfigFileName           = "tsconfig.json"
 	TypeScriptTSConfigTemplateName       = "tsconfig_json.tmpl"
@@ -28,11 +29,13 @@ var (
 	TypesScriptUtilsDirectory            = "stevie-utils"
 
 	// Go
+	GoLanguage                   = "go"
 	GoFileTemplatesDirectoryName = "go"
 	GoGoModName                  = "go.mod"
 	GoGoSumName                  = "go.sum"
 
 	// Dotnet
+	DotNetLangauge                  = "dotnet"
 	DotNetFileTemplateDirectoryName = "dotnet"
 )
 
@@ -46,14 +49,21 @@ func CreateProjectStructure(name, description string) error {
 	// Create the application directory.
 	err := utils.CreateNewDirectory(ApplicationFolder)
 	if err != nil {
-		return fmt.Errorf("Error creating application directory: %v", err)
+		return utils.NewErrorMessage("Error creating application directory", err)
 	}
 
 	// Create the controllers directory.
 	controllersDirectoryPath := path.Join(ApplicationFolder, ControllersFolder)
 	err = utils.CreateNewDirectory(controllersDirectoryPath)
 	if err != nil {
-		return err
+		return utils.NewErrorMessage("Error creating controllers directory", err)
+	}
+
+	// Create the models directory.
+	modelsDirectoryPath := path.Join(ApplicationFolder, ModelsFolder)
+	err = utils.CreateNewDirectory(modelsDirectoryPath)
+	if err != nil {
+		return utils.NewErrorMessage("Error creating models directory", err)
 	}
 
 	return nil

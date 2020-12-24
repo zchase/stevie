@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -21,6 +22,7 @@ var name string
 var methods []string
 var corsEnabled bool
 var controllerLanguage string
+var fromModelName string
 
 var addControllerCmd = &cobra.Command{
 	Use:   "add-controller",
@@ -38,8 +40,73 @@ func promptForControllerLanguage(message string) string {
 	return language
 }
 
+func addNewControllerFromModel(modelName, controllerLanguage string) error {
+	var err error
+
+	// Create a spinner.
+	controllerFromModelSpinner := utils.CreateNewTerminalSpinner(
+		fmt.Sprintf("Creating CRUD APIs from %s model", modelName),
+		fmt.Sprintf("Successfully created CRUD APIs from %s model", modelName),
+		fmt.Sprintf("Failed to create CRUD APIs from %s model", modelName),
+	)
+
+	// Verify the language is valid.
+	switch controllerLanguage {
+	case application.TypeScriptControllerLanguage:
+		break
+	case "":
+		controllerLanguage, err = utils.PromptSelection("Unknown controller langauge provided. Please selected a valid language", []string{"typescript"})
+		utils.CheckForNilAndHandleError(err, "Error selecting controller language")
+		break
+	default:
+		controllerLanguage, err = utils.PromptSelection("No controller langauge provided. Please selected a valid language", []string{"typescript"})
+		utils.CheckForNilAndHandleError(err, "Error selecting controller language")
+		break
+	}
+
+	// Lookup the model.
+	modelDirPath := path.Join(application.ApplicationFolder, application.ModelsFolder)
+	modelDirContents, err := utils.ReadDirectoryContents(modelDirPath)
+	utils.CheckForNilAndHandleError(err, "Error reading contents of model directory")
+
+	var modelFileName string
+	for _, content := range modelDirContents {
+		fileName := strings.Split(content, ".")[0]
+		if fileName == modelName {
+			modelFileName = content
+		}
+	}
+
+	if modelFileName == "" {
+		utils.HandleError("No matching model found for the provided model name", nil)
+	}
+
+	modelFilePath := path.Join(modelDirPath, modelFileName)
+	fmt.Println(modelFilePath)
+	schema, err := utils.GenerateModelSchemaFromFile(modelFilePath)
+	utils.CheckForNilAndHandleError(err, "Error generating schema from model file")
+
+	// Create the controllers from the model definition.
+	controllerPath, err := application.GenerateControllerFromModelSchema(modelName, controllerLanguage, schema)
+	utils.CheckForNilAndHandleError(err, "Error creating controller files from model")
+
+	err = AddAPIRouteToConfig(application.ApplicationConfigPath, modelName, fmt.Sprintf("/%s", modelName), controllerPath, corsEnabled)
+	utils.CheckForNilAndHandleError(err, "Error writing new controller to config")
+
+	controllerFromModelSpinner.Stop()
+	return nil
+}
+
 func addNewController(cmd *cobra.Command, args []string) {
 	var err error
+
+	// If the controller is being generated from a model we need to handle
+	// that case and return once we've generated the controllers.
+	if fromModelName != "" {
+		err = addNewControllerFromModel(fromModelName, controllerLanguage)
+		utils.CheckForNilAndHandleError(err, "Error generating controllers from model definition")
+		return
+	}
 
 	// To start let's make sure we have all the config values we
 	// need to create the route.
@@ -113,4 +180,5 @@ func init() {
 	addControllerCmd.Flags().StringSliceVar(&methods, "methods", []string{"GET"}, "The methods for your route. GET, POST, PUT, & DELETE.")
 	addControllerCmd.Flags().StringVar(&controllerLanguage, "language", "", "The language you are using to write your controller.")
 	addControllerCmd.Flags().BoolVar(&corsEnabled, "cors", false, "Enable CORS on your path.")
+	addControllerCmd.Flags().StringVar(&fromModelName, "from-model-name", "", "Generate CRUD APIs from a model.")
 }

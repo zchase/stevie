@@ -15,6 +15,7 @@ import (
 // createIAMLambdaRole creates an IAM role for a Lambda
 func createIAMLambdaRole(ctx *pulumi.Context, name string) (*iam.Role, error) {
 	roleName := fmt.Sprintf("%s-task-exec-role", name)
+	fmt.Printf("Creating: %s", roleName)
 
 	role, err := iam.NewRole(ctx, roleName, &iam.RoleArgs{
 		AssumeRolePolicy: pulumi.String(`{
@@ -48,9 +49,13 @@ func createLambdaLogPolicy(ctx *pulumi.Context, role *iam.Role, name string) (*i
 				"Action": [
 					"logs:CreateLogGroup",
 					"logs:CreateLogStream",
-					"logs:PutLogEvents"
+					"logs:PutLogEvents",
+					"dynamodb:UpdateItem",
+					"dynamodb:PutItem",
+					"dynamodb:GetItem",
+					"dynamodb:DeleteItem"
 				],
-				"Resource": "arn:aws:logs:*:*:*"
+				"Resource": "*"
 			}]
 		}`),
 	})
@@ -61,45 +66,27 @@ func createLambdaLogPolicy(ctx *pulumi.Context, role *iam.Role, name string) (*i
 	return logPolicy, nil
 }
 
-// detectLambdaLanguage figures out the language of lambda by looking at the
-// the file extension.
-func detectLambdaLanguage(dirPath string) (string, error) {
-	dirContents, err := utils.ReadDirectoryContents(dirPath)
-	if err != nil {
-		return "", err
+// createLambdaTableEnvVariables creates the environment variables from the application's
+// table names.
+func createLambdaTableEnvVariables(tableNames []DynamoDBTable) lambda.FunctionEnvironmentArgs {
+	result := pulumi.StringMap{}
+	for _, name := range tableNames {
+		tableNameWithoutEnv := strings.Join(strings.Split(name.DisplayName, "_")[1:], "_")
+		mapKey := fmt.Sprintf("%s_TABLE_NAME", strings.ToUpper(tableNameWithoutEnv))
+		result[mapKey] = name.Name
 	}
 
-	// Check the first file that is not a directory.
-	var fileNameParts []string
-	for i, content := range dirContents {
-		contentParts := strings.Split(content, ".")
-		if len(contentParts) >= 2 {
-			fileNameParts = contentParts
-			break
-		}
-
-		if i == (len(dirContents) - 1) {
-			return "", fmt.Errorf("Invalid file name provided.")
-		}
-	}
-
-	switch fileNameParts[len(fileNameParts)-1] {
-	case "ts":
-		return "typescript", nil
-	case "go":
-		return "go", nil
-	case "cs", "csproj":
-		return "dotnet", nil
-	default:
-		return "", fmt.Errorf("Unsupported language file detected.")
-	}
+	return lambda.FunctionEnvironmentArgs{Variables: result}
 }
 
 // createLambdaFunction creates a Lambda function
-func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.RolePolicy, route APIRoute, method string) (*lambda.Function, error) {
+func createLambdaFunction(
+	ctx *pulumi.Context, role *iam.Role, logPolicy *iam.RolePolicy, route APIRoute, method string,
+	tableNames []DynamoDBTable,
+) (*lambda.Function, error) {
 	// Determine the language of the function.
 	lambdaFilePath := path.Join(route.PathToFiles, method)
-	lambdaLanguage, err := detectLambdaLanguage(lambdaFilePath)
+	lambdaLanguage, err := utils.DetectFileLanguageFromExtension(lambdaFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -140,12 +127,16 @@ func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.Ro
 		return nil, err
 	}
 
+	// Create the environment variables for the tables.
+	lambdaEnvVars := createLambdaTableEnvVariables(tableNames)
+
 	handlerFileName := path.Join(currentWorkingDirectory, handlerZipFile)
 	args := &lambda.FunctionArgs{
-		Handler: pulumi.String(handlerName),
-		Role:    role.Arn,
-		Runtime: pulumi.String(lambdaRuntime),
-		Code:    pulumi.NewFileArchive(handlerFileName),
+		Handler:     pulumi.String(handlerName),
+		Role:        role.Arn,
+		Runtime:     pulumi.String(lambdaRuntime),
+		Code:        pulumi.NewFileArchive(handlerFileName),
+		Environment: lambdaEnvVars,
 	}
 
 	// Create the lambda using the args.
@@ -163,7 +154,7 @@ func createLambdaFunction(ctx *pulumi.Context, role *iam.Role, logPolicy *iam.Ro
 }
 
 // CreateRouteHandler creates a Lambda function used for handling API Gateway requests.
-func CreateRouteHandler(ctx *pulumi.Context, route APIRoute, method string) (*lambda.Function, error) {
+func CreateRouteHandler(ctx *pulumi.Context, route APIRoute, method string, tableNames []DynamoDBTable) (*lambda.Function, error) {
 	lambdaName := fmt.Sprintf("%s-%s", route.Name, method)
 
 	// Create the role.
@@ -179,7 +170,7 @@ func CreateRouteHandler(ctx *pulumi.Context, route APIRoute, method string) (*la
 	}
 
 	// Create the function.
-	function, err := createLambdaFunction(ctx, role, logPolicy, route, method)
+	function, err := createLambdaFunction(ctx, role, logPolicy, route, method, tableNames)
 	if err != nil {
 		return nil, err
 	}

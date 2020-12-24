@@ -202,7 +202,7 @@ type APIEndpointFunction struct {
 
 func CreateAPIEndpoint(
 	ctx *pulumi.Context, gateway *apigateway.RestApi, environment string,
-	route APIRoute, methods []string,
+	route APIRoute, methods []string, tableNames []DynamoDBTable,
 ) (pulumi.StringOutput, error) {
 	// Get the AWS account.
 	account, err := aws.GetCallerIdentity(ctx)
@@ -219,7 +219,7 @@ func CreateAPIEndpoint(
 	// Create the lambdas functions.
 	var lambdaFunctions []APIEndpointFunction
 	for _, method := range methods {
-		function, err := CreateRouteHandler(ctx, route, method)
+		function, err := CreateRouteHandler(ctx, route, method, tableNames)
 		if err != nil {
 			return pulumi.StringOutput{}, err
 		}

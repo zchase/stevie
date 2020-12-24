@@ -16,8 +16,11 @@ func CreateAPIRoute(name, route, pathToFiles string, corsEnabled bool) auto_pulu
 }
 
 // BuildAPIRoutes builds the API Routes.
-func BuildAPIRoutes(ctx *pulumi.Context, projectName, environment string, routes []auto_pulumi.APIRoute) error {
-	endpointURLS, err := auto_pulumi.CreateAPI(ctx, projectName, environment, routes)
+func BuildAPIRoutes(
+	ctx *pulumi.Context, projectName, environment string, routes []auto_pulumi.APIRoute,
+	tableNames []auto_pulumi.DynamoDBTable,
+) error {
+	endpointURLS, err := auto_pulumi.CreateAPI(ctx, projectName, environment, routes, tableNames)
 	if err != nil {
 		return err
 	}

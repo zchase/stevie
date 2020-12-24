@@ -1,0 +1,25 @@
+import { controllerBuilder } from "stevie-utils";
+import aws from "aws-sdk";
+
+const {{ .ModelName }}Table = process.env.{{ .TableEnvVar }} || "";
+
+interface {{ .ModelImportName }}TableKey {
+    {{ .TableHashKey }}: {{ .TableHashKeyType }};
+    {{ if .TableRangeKey }}
+    {{ .TableRangeKey }}: {{ .TableRangeKeyType }};
+    {{ end }}
+}
+
+export const {{ .FunctionName }}: controllerBuilder.RawRouteHandler = async (res, key) => {
+    const deleteKey = key.value;
+    const dynamo = new aws.DynamoDB.DocumentClient();
+    const params = {
+        TableName: {{ .ModelName }}Table,
+        Key: deleteKey,
+    };
+
+    await dynamo.delete(params).promise();
+    return res.send({ ok: true });
+};
+
+export const {{ .HandlerName }} = controllerBuilder.createRouteHandler({{ .FunctionName }});

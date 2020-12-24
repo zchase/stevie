@@ -1,0 +1,37 @@
+import { controllerBuilder } from "stevie-utils";
+import aws from "aws-sdk";
+
+const {{ .ModelName }}Table = process.env.{{ .TableEnvVar }} || "";
+
+interface {{ .ModelImportName }}TableKey {
+    {{ .TableHashKey }}: {{ .TableHashKeyType }};
+    {{ if .TableRangeKey }}
+    {{ .TableRangeKey }}: {{ .TableRangeKeyType }};
+    {{ end }}
+}
+
+export const {{ .FunctionName }}: controllerBuilder.RawRouteHandler = async (res, key, updates) => {
+    const updateKey = key.value;
+    const dbUpdates = updates.value;
+
+    const updateExpressionParts: any = [];
+    const updateAttributeValues: any = {};
+    Object.keys(updates).forEach((key) => {
+        updateExpressionParts.push(`${key}: :${key}`);
+        updateAttributeValues[key] = dbUpdates[key];
+    });
+
+    const dynamo = new aws.DynamoDB.DocumentClient();
+    const params = {
+        TableName: {{ .ModelName }}Table,
+        Key: updateKey,
+        ReturnValues:"UPDATED_NEW",
+        UpdateExpression: `set ${updateExpressionParts.join(", ")}`,
+        ExpressionAttributeValues: updateAttributeValues,
+    };
+
+    const updatedRecord = await dynamo.update(params).promise();
+    return res.send({ ok: true, data: updatedRecord });
+};
+
+export const {{ .HandlerName }} = controllerBuilder.createRouteHandler({{ .FunctionName }});

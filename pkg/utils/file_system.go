@@ -7,9 +7,44 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/markbates/pkger"
 )
+
+// DetectFileLanguageFromExtension figures out the language of a file by
+// looking at the the file extension.
+func DetectFileLanguageFromExtension(dirPath string) (string, error) {
+	dirContents, err := ReadDirectoryContents(dirPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Check the first file that is not a directory.
+	var fileNameParts []string
+	for i, content := range dirContents {
+		contentParts := strings.Split(content, ".")
+		if len(contentParts) >= 2 {
+			fileNameParts = contentParts
+			break
+		}
+
+		if i == (len(dirContents) - 1) {
+			return "", fmt.Errorf("Invalid file name provided.")
+		}
+	}
+
+	switch fileNameParts[len(fileNameParts)-1] {
+	case "ts":
+		return "typescript", nil
+	case "go":
+		return "go", nil
+	case "cs", "csproj":
+		return "dotnet", nil
+	default:
+		return "", fmt.Errorf("Unsupported language file detected.")
+	}
+}
 
 // addFilesToZip adds files in a directory to a zip file.
 func addFilesToZip(writer *zip.Writer, baseZipPath, baseInZip string) error {

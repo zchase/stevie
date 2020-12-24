@@ -46,7 +46,10 @@ func readRoutesFromControllerDirectory(controllerDirectoryPath string) ([]string
 	return methods, nil
 }
 
-func CreateAPI(ctx *pulumi.Context, projectName, environment string, routes []APIRoute) ([]APIEndpoint, error) {
+func CreateAPI(
+	ctx *pulumi.Context, projectName, environment string, routes []APIRoute,
+	tableNames []DynamoDBTable,
+) ([]APIEndpoint, error) {
 	apiName := fmt.Sprintf("%s-api", projectName)
 
 	// Create the API Gateway
@@ -63,7 +66,7 @@ func CreateAPI(ctx *pulumi.Context, projectName, environment string, routes []AP
 			return nil, err
 		}
 
-		endpointURL, err := CreateAPIEndpoint(ctx, gateway, environment, route, routeMethods)
+		endpointURL, err := CreateAPIEndpoint(ctx, gateway, environment, route, routeMethods, tableNames)
 		if err != nil {
 			return nil, err
 		}

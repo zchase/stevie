@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
+	"path"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto"
 	"github.com/zchase/stevie/pkg/application"
 	"github.com/zchase/stevie/pkg/auto_pulumi"
+	"github.com/zchase/stevie/pkg/utils"
 )
 
 func CreateAPIDeployment(environment string) (auto.Stack, error) {
@@ -26,7 +28,13 @@ func CreateAPIDeployment(environment string) (auto.Stack, error) {
 
 	// Create the deploy function.
 	deployFunc := func(ctx *pulumi.Context) error {
-		return application.BuildAPIRoutes(ctx, appConfig.DashCaseName, environment, appConfig.Routes)
+		modelDirPath := path.Join(application.ApplicationFolder, application.ModelsFolder)
+		tableNames, err := auto_pulumi.BuildDynamoDBTables(ctx, modelDirPath, environment)
+		if err != nil {
+			return utils.NewErrorMessage("Error creating Dynamo tables", err)
+		}
+
+		return application.BuildAPIRoutes(ctx, appConfig.DashCaseName, environment, appConfig.Routes, tableNames)
 	}
 
 	// Create the stack.

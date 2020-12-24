@@ -82,7 +82,7 @@ func (p *PulumiActionOutputLogger) WriteTable() {
 func (p *PulumiActionOutputLogger) AddRow(msg string) {
 	msgParts := strings.Split(msg, " ")
 
-	if len(msgParts) == 7 {
+	if len(msgParts) == 7 || len(msgParts) == 8 {
 
 		urn := msgParts[3]
 		name := msgParts[4]
