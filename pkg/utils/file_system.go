@@ -311,6 +311,34 @@ func CopyPackagedDirectory(oldDirPath, newDirPath string, exclustionList []strin
 	return nil
 }
 
+type RecursiveDirectoryReadCallback = func(filePath string) error
+
+// RecursiveDirectoryRead reads all the contents of directory and runs a callback on each file.
+func RecursiveDirectoryRead(dirPath, basePath string, block RecursiveDirectoryReadCallback) error {
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return NewErrorMessage("Error reading directory", err)
+	}
+
+	for _, file := range files {
+		fileBasePath := path.Join(basePath, file.Name())
+		filePathWithDir := path.Join(dirPath, file.Name())
+
+		// If the files is a directory we need to go through
+		// the contents of that directory too.
+		if file.IsDir() {
+			return RecursiveDirectoryRead(filePathWithDir, fileBasePath, block)
+		}
+
+		err = block(fileBasePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // CopyDirectory copies a directory and its contents to a new location.
 func CopyDirectory(oldDirPath, newDirPath string, exclustionList []string) error {
 	// Read the directory.

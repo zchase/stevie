@@ -1,0 +1,65 @@
+import axios, { AxiosRequestConfig } from "axios";
+
+interface RequestData {
+    [key: string]: any;
+}
+
+export type RequestMethods = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+export class RestClient {
+    private readonly opts: AxiosRequestConfig;
+
+    constructor(opts: AxiosRequestConfig) {
+        this.opts = opts;
+    }
+
+    private async send<T>(method: RequestMethods, path: string, data: RequestData = {}, opts: AxiosRequestConfig = {}): Promise<T> {
+        // Create the reqData object. https://github.com/axios/axios#axios-api
+        const reqData = Object.assign({}, this.opts, opts, {
+            method,
+            data,
+            url: path,
+        });
+
+        // Remove the data object if it is a "GET" request.
+        if (method === 'GET') {
+            delete reqData.data;
+        }
+
+        // Make the request
+        const result = await axios(reqData);
+
+        // Return the data.
+        return <T>result.data;
+    }
+
+    async get<T>(path: string, qs: RequestData, opts: AxiosRequestConfig = {}): Promise<T> {
+        // Build the query string. First we need to check if the path already
+        // has a query string, and assign the divider.
+        const queryKeyDivider = path.split("?")[1] === undefined ? "?" : "&";
+
+        // Grab the query keys from the object.
+        const queryKeys = Object.keys(qs);
+
+        // Build the full url.
+        const query = queryKeys.map((key: string) => `${key}=${encodeURIComponent(qs[key])}`).join("&");
+        const fullPath = path + queryKeyDivider + query;
+
+        return await this.send<T>("GET", fullPath, {}, opts);
+    }
+
+    async post<T>(path: string, data: RequestData, opts: AxiosRequestConfig = {}): Promise<T> {
+        return await this.send<T>("POST", path, data, opts);
+    }
+
+    async patch<T>(path: string, data: RequestData, opts: AxiosRequestConfig = {}): Promise<T> {
+        return await this.send<T>("PATCH", path, data, opts);
+    }
+
+    async put<T>(path: string, data: RequestData, opts: AxiosRequestConfig = {}): Promise<T> {
+        return await this.send<T>("PUT", path, data, opts);
+    }
+
+    async delete<T>(path: string, data: RequestData, opts: AxiosRequestConfig = {}): Promise<T> {
+        return await this.send<T>("DELETE", path, data, opts);
+    }
+}

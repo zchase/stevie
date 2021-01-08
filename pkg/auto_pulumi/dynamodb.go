@@ -86,8 +86,8 @@ type DynamoDBKey struct {
 func CreateDynamoDBTable(ctx *pulumi.Context, name string, hashKey, rangeKey DynamoDBKey) (*dynamodb.Table, error) {
 	tableArgs := &dynamodb.TableArgs{
 		HashKey:       pulumi.String(hashKey.Name),
-		WriteCapacity: pulumi.Int(5),
-		ReadCapacity:  pulumi.Int(5),
+		WriteCapacity: pulumi.Int(1),
+		ReadCapacity:  pulumi.Int(1),
 		BillingMode:   pulumi.String("PAY_PER_REQUEST"),
 	}
 

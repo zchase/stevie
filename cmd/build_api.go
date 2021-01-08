@@ -34,7 +34,25 @@ func CreateAPIDeployment(environment string) (auto.Stack, error) {
 			return utils.NewErrorMessage("Error creating Dynamo tables", err)
 		}
 
-		return application.BuildAPIRoutes(ctx, appConfig.DashCaseName, environment, appConfig.Routes, tableNames)
+		endpoints, err := application.BuildAPIRoutes(ctx, appConfig.DashCaseName, environment, appConfig.Routes, tableNames)
+		if err != nil {
+			return utils.NewErrorMessage("Error creating API Routes", err)
+		}
+
+		// If there is a UI directory, we should deploy it.
+		dirExists, err := utils.DoesFileExist("ui")
+		if err != nil {
+			return utils.NewErrorMessage("Error finding UI directory", err)
+		}
+
+		if dirExists {
+			err = auto_pulumi.CreateWebsiteFromDirectoryContents(ctx, endpoints, "ui", environment)
+			if err != nil {
+				return utils.NewErrorMessage("Error deploying the website", err)
+			}
+		}
+
+		return nil
 	}
 
 	// Create the stack.

@@ -1,0 +1,21 @@
+import { Dispatch } from "redux";
+
+interface DispatchHandler {
+    (dispatch: Dispatch): void;
+}
+interface ActionHandler<T> {
+    (args: T): DispatchHandler;
+}
+
+export function createAction<T>(block: Function, type: string): ActionHandler<T> {
+    return (args: T) => {
+        return (dispatch) => {
+            block(args)
+                .then((data: any) => dispatch({ type, data }))
+                .catch((err: any) => {
+                    console.log("ERROR:", err);
+                    // Add your own error handling here.
+                });
+        }
+    }
+}

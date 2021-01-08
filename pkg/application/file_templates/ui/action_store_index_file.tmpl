@@ -1,0 +1,8 @@
+{{ range .Items }}
+import * as {{ .ImportName }} from "./{{ .ImportName }}";
+{{ end }}
+export {
+{{ range .Items }}
+    {{ .ImportName }},
+{{ end }}
+};

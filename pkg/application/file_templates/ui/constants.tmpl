@@ -1,0 +1,3 @@
+{{ range .Constants }}
+export const {{ .Name }} = {{ .Value }};
+{{ end }}
