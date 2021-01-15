@@ -1,5 +1,5 @@
 {{ range .Items }}
-import * as {{ .ImportName }} from "./{{ .ImportName }}";
+import * as {{ .ImportName }} from "./{{ .ImportName }}.js";
 {{ end }}
 export {
 {{ range .Items }}

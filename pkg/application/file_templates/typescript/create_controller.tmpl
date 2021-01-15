@@ -15,11 +15,11 @@ export const {{ .FunctionName }}: controllerBuilder.RawRouteHandler = async (res
     const dynamo = new aws.DynamoDB.DocumentClient();
     const params = {
         TableName: {{ .ModelName }}Table,
-        Item: item,
+        Item: dbItem,
     };
 
     await dynamo.put(params).promise();
-    return res.send({ ok: true, data: item });
+    return res.send({ ok: true, data: dbItem });
 };
 
 export const {{ .HandlerName }} = controllerBuilder.createRouteHandler({{ .FunctionName }});

@@ -76,6 +76,9 @@ func createLambdaTableEnvVariables(tableNames []DynamoDBTable) lambda.FunctionEn
 		result[mapKey] = name.Name
 	}
 
+	if len(result) == 0 {
+		return lambda.FunctionEnvironmentArgs{}
+	}
 	return lambda.FunctionEnvironmentArgs{Variables: result}
 }
 
@@ -127,16 +130,18 @@ func createLambdaFunction(
 		return nil, err
 	}
 
-	// Create the environment variables for the tables.
-	lambdaEnvVars := createLambdaTableEnvVariables(tableNames)
-
 	handlerFileName := path.Join(currentWorkingDirectory, handlerZipFile)
 	args := &lambda.FunctionArgs{
-		Handler:     pulumi.String(handlerName),
-		Role:        role.Arn,
-		Runtime:     pulumi.String(lambdaRuntime),
-		Code:        pulumi.NewFileArchive(handlerFileName),
-		Environment: lambdaEnvVars,
+		Handler: pulumi.String(handlerName),
+		Role:    role.Arn,
+		Runtime: pulumi.String(lambdaRuntime),
+		Code:    pulumi.NewFileArchive(handlerFileName),
+	}
+
+	// Create the environment variables for the tables.
+	lambdaEnvVars := createLambdaTableEnvVariables(tableNames)
+	if lambdaEnvVars.Variables != nil {
+		args.Environment = lambdaEnvVars
 	}
 
 	// Create the lambda using the args.

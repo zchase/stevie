@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/apigateway"
+	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/zchase/stevie/pkg/utils"
 )
@@ -53,6 +55,9 @@ func CreateAPI(
 	apiName := fmt.Sprintf("%s-api", projectName)
 
 	// Create the API Gateway
+	var functions []APIEndpointFunction
+	var apiResources []*apigateway.Resource
+	var permissions []*lambda.Permission
 	gateway, err := CreateNewAPIGateway(ctx, apiName)
 	if err != nil {
 		return nil, err
@@ -66,16 +71,24 @@ func CreateAPI(
 			return nil, err
 		}
 
-		endpointURL, err := CreateAPIEndpoint(ctx, gateway, environment, route, routeMethods, tableNames)
+		endpointData, err := CreateAPIEndpoint(ctx, gateway, environment, route, routeMethods, tableNames)
 		if err != nil {
 			return nil, err
 		}
 
 		endpoint := APIEndpoint{
 			Name: route.Name,
-			URL:  endpointURL,
+			URL:  endpointData.EndpointUrl,
 		}
 		endpoints = append(endpoints, endpoint)
+		functions = append(functions, endpointData.Functions...)
+		apiResources = append(apiResources, endpointData.ApiResource)
+		permissions = append(permissions, endpointData.Permissions...)
+	}
+
+	err = CreateApiGatewayDeployment(ctx, functions, apiResources, gateway, permissions, environment)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating API deployment: %v", err)
 	}
 
 	return endpoints, nil

@@ -1,0 +1,10 @@
+import * as constants from "../constants/index.js";
+import { createAction } from "./create_action.js";
+import { RestClient } from "./rest_client.js";
+import { {{ .ModelImportName }} } from "../models/{{ .Name }}.js";
+
+const baseURL = process.env.REACT_APP_{{ .UrlEnvVarName }}_ENDPOINT;
+const client = new RestClient({ baseURL });
+{{ range .Actions }}
+export const {{ .Name }} = createAction<{{ .ArgsType }}>(client.{{ .Method }}, constants.{{ .ConstantName }});
+{{ end }}

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
@@ -8,7 +9,8 @@ import (
 )
 
 type APIModel struct {
-	Name string
+	Name   string
+	Schema utils.JSONSchema
 }
 
 type ActionModelStoreImportItems struct {
@@ -35,12 +37,87 @@ func readAndCopyAPIModels(utilsModelFilePath string) ([]APIModel, error) {
 			return nil, err
 		}
 
+		schema, err := utils.GenerateModelSchemaFromFile(newFilePath)
+		if err != nil {
+			return nil, err
+		}
+
 		models = append(models, APIModel{
-			Name: strings.Split(modelFile, ".")[0],
+			Name:   strings.Split(modelFile, ".")[0],
+			Schema: schema,
 		})
 	}
 
 	return models, nil
+}
+
+type ActionFileActionFunctionArgs struct {
+	Name         string
+	ArgsType     string
+	Method       string
+	ConstantName string
+}
+
+type ActionFileArgs struct {
+	UrlEnvVarName   string
+	ModelImportName string
+	Name            string
+	Actions         []ActionFileActionFunctionArgs
+}
+
+type ConstantArgs struct {
+	Name  string
+	Value string
+}
+
+type ConstantFileArgs struct {
+	Constants []ConstantArgs
+}
+
+// createConstant creates a constant.
+func createConstant(method, name string) string {
+	return fmt.Sprintf("%s_%s", strings.ToUpper(method), strings.ToUpper(name))
+}
+
+// writeActionFiles write the action files.
+func writeActionFiles(templatePath, utilsPath string, models []APIModel) ([]ConstantArgs, error) {
+	var result []ConstantArgs
+
+	for _, model := range models {
+		// Add the different methods to support starting with get.
+		var actionsFunctions []ActionFileActionFunctionArgs
+		methods := [4]string{"get", "put", "post", "delete"}
+		for _, method := range methods {
+			methodConstant := createConstant(method, model.Name)
+			actionsFunctions = append(actionsFunctions, ActionFileActionFunctionArgs{
+				Name:         utils.DashCaseToSentenceCase(fmt.Sprintf("%s-%s", method, model.Name)),
+				ArgsType:     utils.DashCaseToSentenceCase(model.Name),
+				Method:       method,
+				ConstantName: methodConstant,
+			})
+			result = append(result, ConstantArgs{
+				Name:  methodConstant,
+				Value: methodConstant,
+			})
+		}
+
+		actionFileArgs := ActionFileArgs{
+			Name:            model.Name,
+			UrlEnvVarName:   strings.ToUpper(model.Name),
+			ModelImportName: utils.DashCaseToSentenceCase(model.Name),
+			Actions:         actionsFunctions,
+		}
+
+		fileName := fmt.Sprintf("%s.ts", model.Name)
+		templatePath := path.Join(templatePath, "action.tmpl")
+		filePath := path.Join(utilsPath, fileName)
+		err := utils.WriteOutTemplateToFile(templatePath, filePath, actionFileArgs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }
 
 // CreateUIUtilsPackage generates the UI utils package.
@@ -105,8 +182,29 @@ func CreateUIUtilsPackage(uiDir string) error {
 	}
 
 	// Write the actions files.
+	constants, err := writeActionFiles(uiTemplatesPath, actionsDirPath, models)
+	if err != nil {
+		return err
+	}
+
+	createActionFileTemplatePath := path.Join(uiTemplatesPath, "create_action.tmpl")
+	createActionFileName := path.Join(actionsDirPath, "create_action.ts")
+	err = utils.WriteOutTemplateToFile(createActionFileTemplatePath, createActionFileName, nil)
+	if err != nil {
+		return err
+	}
+
+	restClientFileTemplatePath := path.Join(uiTemplatesPath, "rest_client.tmpl")
+	restClientFileName := path.Join(actionsDirPath, "rest_client.ts")
+	err = utils.WriteOutTemplateToFile(restClientFileTemplatePath, restClientFileName, nil)
+	if err != nil {
+		return err
+	}
+
 	actionsFilePath := path.Join(actionsDirPath, "index.ts")
-	err = utils.WriteOutTemplateToFile(modelsActionsStoresFileTemplatePath, actionsFilePath, nil)
+	err = utils.WriteOutTemplateToFile(modelsActionsStoresFileTemplatePath, actionsFilePath, ActionModelStoreIndexArgs{
+		Items: modelsIndexFileArgs,
+	})
 	if err != nil {
 		return utils.NewErrorMessage("Error writing actions index file", err)
 	}
@@ -134,13 +232,15 @@ func CreateUIUtilsPackage(uiDir string) error {
 
 	constantsFileTemplatePath := path.Join(uiTemplatesPath, "constants.tmpl")
 	constantsFilePath := path.Join(constantsDirPath, "index.ts")
-	err = utils.WriteOutTemplateToFile(constantsFileTemplatePath, constantsFilePath, nil)
+	err = utils.WriteOutTemplateToFile(constantsFileTemplatePath, constantsFilePath, ConstantFileArgs{
+		Constants: constants,
+	})
 	if err != nil {
 		return utils.NewErrorMessage("Error writing constants file", err)
 	}
 
 	// Install the module.
-	err = utils.RunCommandWithOutput("yarn", []string{"---cwd", "ui", "add", "file:./ui/stevie-ui-utils"})
+	err = utils.RunCommandWithOutput("yarn", []string{"--cwd", "ui", "add", "file:./stevie-ui-utils"})
 	if err != nil {
 		return utils.NewErrorMessage("Error installing utils modules", err)
 	}

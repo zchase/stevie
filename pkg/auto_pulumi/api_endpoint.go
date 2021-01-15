@@ -166,15 +166,19 @@ func enableCORSOnResource(ctx *pulumi.Context, apiResource *apigateway.Resource,
 	return nil
 }
 
-func createApiGatewayDeployment(
-	ctx *pulumi.Context, functions []APIEndpointFunction, apiResource *apigateway.Resource, gateway *apigateway.RestApi,
-	permissions []*lambda.Permission, name string, environment string,
+func CreateApiGatewayDeployment(
+	ctx *pulumi.Context, functions []APIEndpointFunction, apiResource []*apigateway.Resource, gateway *apigateway.RestApi,
+	permissions []*lambda.Permission, environment string,
 ) error {
-	apiDeploymentName := fmt.Sprintf("%s-api-deployment", name)
+	apiDeploymentName := fmt.Sprintf("%s-api-deployment", environment)
 	stage := pulumi.String(environment)
 
 	// Create the depends-on array
-	dependsOn := []pulumi.Resource{gateway, apiResource}
+	dependsOn := []pulumi.Resource{gateway}
+	for _, resource := range apiResource {
+		dependsOn = append(dependsOn, resource)
+	}
+
 	for _, function := range functions {
 		dependsOn = append(dependsOn, function.Function)
 	}
@@ -189,7 +193,7 @@ func createApiGatewayDeployment(
 		StageName:        stage,
 	}, pulumi.DependsOn(dependsOn))
 	if err != nil {
-		return fmt.Errorf("Error creating API Gateway Deployment for %s: %v", name, err)
+		return fmt.Errorf("Error creating API Gateway Deployment for %s: %v", environment, err)
 	}
 
 	return nil
@@ -200,20 +204,27 @@ type APIEndpointFunction struct {
 	Method   string
 }
 
+type APIEndpointResult struct {
+	Functions   []APIEndpointFunction
+	ApiResource *apigateway.Resource
+	Permissions []*lambda.Permission
+	EndpointUrl pulumi.StringOutput
+}
+
 func CreateAPIEndpoint(
 	ctx *pulumi.Context, gateway *apigateway.RestApi, environment string,
 	route APIRoute, methods []string, tableNames []DynamoDBTable,
-) (pulumi.StringOutput, error) {
+) (APIEndpointResult, error) {
 	// Get the AWS account.
 	account, err := aws.GetCallerIdentity(ctx)
 	if err != nil {
-		return pulumi.StringOutput{}, fmt.Errorf("Error getting AWS identity: %v", err)
+		return APIEndpointResult{}, fmt.Errorf("Error getting AWS identity: %v", err)
 	}
 
 	// Get the AWS region.
 	region, err := aws.GetRegion(ctx, &aws.GetRegionArgs{})
 	if err != nil {
-		return pulumi.StringOutput{}, fmt.Errorf("Error getting AWS region: %v", err)
+		return APIEndpointResult{}, fmt.Errorf("Error getting AWS region: %v", err)
 	}
 
 	// Create the lambdas functions.
@@ -221,7 +232,7 @@ func CreateAPIEndpoint(
 	for _, method := range methods {
 		function, err := CreateRouteHandler(ctx, route, method, tableNames)
 		if err != nil {
-			return pulumi.StringOutput{}, err
+			return APIEndpointResult{}, err
 		}
 
 		lambdaFunctions = append(lambdaFunctions, APIEndpointFunction{
@@ -233,13 +244,13 @@ func CreateAPIEndpoint(
 	// Add a resource to the API Gateway.
 	apiResource, err := createAPIGatewayResource(ctx, gateway, route.Name, route.Route)
 	if err != nil {
-		return pulumi.StringOutput{}, err
+		return APIEndpointResult{}, err
 	}
 
 	// Add the methods to the API Gateway.
 	err = createAPIGatewayRouteMethods(ctx, apiResource, gateway, route.Name, lambdaFunctions)
 	if err != nil {
-		return pulumi.StringOutput{}, err
+		return APIEndpointResult{}, err
 	}
 
 	// Add integrations for each lambda to the API Gateway.
@@ -248,19 +259,14 @@ func CreateAPIEndpoint(
 		account.Id, lambdaFunctions,
 	)
 	if err != nil {
-		return pulumi.StringOutput{}, err
-	}
-
-	// Create a new deployment
-	err = createApiGatewayDeployment(
-		ctx, lambdaFunctions, apiResource, gateway, permissions, route.Name,
-		environment,
-	)
-	if err != nil {
-		return pulumi.StringOutput{}, err
+		return APIEndpointResult{}, err
 	}
 
 	endpointURL := pulumi.Sprintf("https://%s.execute-api.%s.amazonaws.com/%s%s", gateway.ID(), region.Name, environment, route.Route)
-
-	return endpointURL, nil
+	return APIEndpointResult{
+		EndpointUrl: endpointURL,
+		Functions:   lambdaFunctions,
+		ApiResource: apiResource,
+		Permissions: permissions,
+	}, nil
 }

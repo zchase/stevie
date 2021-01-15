@@ -177,7 +177,7 @@ func init() {
 	RootCmd.AddCommand(addControllerCmd)
 
 	addControllerCmd.Flags().StringVar(&name, "name", "", "The name for the controller in camelCase.")
-	addControllerCmd.Flags().StringSliceVar(&methods, "methods", []string{"GET"}, "The methods for your route. GET, POST, PUT, & DELETE.")
+	addControllerCmd.Flags().StringSliceVar(&methods, "methods", []string{"get"}, "The methods for your route. GET, POST, PUT, & DELETE.")
 	addControllerCmd.Flags().StringVar(&controllerLanguage, "language", "", "The language you are using to write your controller.")
 	addControllerCmd.Flags().BoolVar(&corsEnabled, "cors", false, "Enable CORS on your path.")
 	addControllerCmd.Flags().StringVar(&fromModelName, "from-model-name", "", "Generate CRUD APIs from a model.")
